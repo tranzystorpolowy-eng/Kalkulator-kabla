@@ -81,44 +81,107 @@ for s in standardowe_przekroje:
 # Wyświetlenie wyników matematycznych
 
 # --- SEKCJA GRAFICZNA (Schemat blokowy układu) ---
-st.header("📊 Graficzny schemat zasilania układu")
+# --- ZAAWANSOWANA WIZUALIZACJA HTML/CSS/SVG ---
+st.header("🖼️ Interaktywny podgląd instalacji (Na żywo)")
 
-# Przygotowanie czytelnego oznaczenia kabla na podstawie wyboru użytkownika
-oznaczenie_kabla = "YKV" if "Miedź" in material else "YAKY"
+# Przygotowanie danych do etykiet
+oznaczenie_kabla = "YKY" if "Miedź" in material else "YAKY"
 zyly = "3x" if U == 230 else "4x"
 
-# Generowanie kodu Graphviz, który narysuje ładny schemat
-schemat_kod = f"""
-digraph G {{
-    rankdir=LR;
-    node [fontname="Helvetica", fontsize=12, shape=box, style="filled,rounded"];
+# Kod HTML + inline CSS + SVG z animacją płynącego prądu
+html_vis = f"""
+<div style="
+    background: #1e293b; 
+    padding: 30px; 
+    border-radius: 12px; 
+    display: flex; 
+    justify-content: space-around; 
+    align-items: center; 
+    font-family: 'Helvetica', Arial, sans-serif;
+    color: white;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+">
     
-    // Definicja elementów (Zasilanie -> Kabel -> Silnik)
-    Zrodlo [label="Rozdzielnica Zasilająca\\n{U}V AC", fillcolor="#ECEFF1", color="#37474F", penwidth=2];
-    
-    Kabel [
-        label="PRZEWÓD ZASILAJĄCY\\nTyp: {oznaczenie_kabla} {zyly}{dobrany_przekroj} mm²\\nDługość: {dlugosc}m\\nIzolacja: {izolacja.split()[0]}", 
-        fillcolor="#FFF9C4", 
-        color="#FBC02D", 
-        penwidth=3,
-        shape=component
-    ];
-    
-    Silnik [
-        label="⚙️ SILNIK ELEKTRYCZNY\\nMoc: {P} kW\\nPrąd In: {I_znamionowy:.2f} A\\ncos φ: {cos_fi}", 
-        fillcolor="#BBDEFB", 
-        color="#1976D2", 
-        penwidth=2
-    ];
-    
-    // Połączenia (Linie z opisem warunków z boku)
-    Zrodlo -> Kabel [label=" Ik = {Ik}A\\n t = {t_zwarcie}s", fontsize=10, fontcolor="#757575", color="#B0BEC5"];
-    Kabel -> Silnik [label=" ΔU = {spadek_max}% max", fontsize=10, fontcolor="#757575", color="#B0BEC5"];
-}}
+    <!-- 1. ROZDZIELNICA -->
+    <div style="text-align: center; width: 140px;">
+        <svg width="80" height="120" viewBox="0 0 80 120" fill="none" xmlns="http://w3.org">
+            <rect x="5" y="5" width="70" height="110" rx="4" fill="#3f4756" stroke="#64748b" stroke-width="3"/>
+            <rect x="15" y="15" width="50" height="30" fill="#0f172a" stroke="#475569" stroke-width="2"/>
+            <text x="40" y="34" fill="#38bdf8" font-size="14" font-weight="bold" text-anchor="middle">{U}V</text>
+            <circle cx="25" cy="65" r="5" fill="#ef4444"/>
+            <circle cx="40" cy="65" r="5" fill="#eab308"/>
+            <circle cx="55" cy="65" r="5" fill="#22c55e"/>
+            <rect x="25" y="85" width="30" height="15" fill="#1e293b" rx="2"/>
+            <line x1="40" y1="85" x2="40" y2="100" stroke="#ef4444" stroke-width="3"/>
+        </svg>
+        <div style="font-size: 13px; font-weight: bold; margin-top: 8px; color: #94a3b8;">Rozdzielnica</div>
+        <div style="font-size: 11px; color: #64748b;">Ik = {Ik}A</div>
+    </div>
+
+    <!-- 2. PRZEWÓD Z ANIMACJĄ PRĄDU -->
+    <div style="flex-grow: 1; position: relative; margin: 0 20px; text-align: center;">
+        <div style="font-size: 12px; background: #334155; padding: 6px 12px; border-radius: 20px; display: inline-block; margin-bottom: 10px; border: 1px solid #475569;">
+            <b style="color: #f59e0b;">{oznaczenie_kabla} {zyly}{dobrany_przekroj} mm²</b> ({dlugosc}m)
+        </div>
+        
+        <!-- Przewód jako linia SVG z animowanymi kropkami -->
+        <svg width="100%" height="20" style="display: block;">
+            <!-- Tło kabla (powłoka zewnętrzna) -->
+            <rect x="0" y="4" width="100%" height="12" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+            
+            <!-- Linia prądu (efekt pulsowania) -->
+            <line x1="0" y1="10" x2="100%" y2="10" 
+                  stroke="#eab308" 
+                  stroke-width="4" 
+                  stroke-dasharray="10, 15" 
+                  style="animation: flow 1s linear infinite;" />
+        </svg>
+        
+        <style>
+            @keyframes flow {{
+                0% {{ stroke-dashoffset: 0; }}
+                100% {{ stroke-dashoffset: -25; }}
+            }}
+        </style>
+        <div style="font-size: 11px; color: #64748b; margin-top: 5px;">Izolacja: {izolacja}</div>
+    </div>
+
+    <!-- 3. SILNIK ELEKTRYCZNY -->
+    <div style="text-align: center; width: 150px;">
+        <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://w3.org">
+            <!-- Żebrowany korpus silnika -->
+            <rect x="20" y="20" width="55" height="50" rx="6" fill="#0284c7" stroke="#0369a1" stroke-width="2"/>
+            <line x1="30" y1="20" x2="30" y2="70" stroke="#0369a1" stroke-width="2"/>
+            <line x1="40" y1="20" x2="40" y2="70" stroke="#0369a1" stroke-width="2"/>
+            <line x1="50" y1="20" x2="50" y2="70" stroke="#0369a1" stroke-width="2"/>
+            <line x1="60" y1="20" x2="60" y2="70" stroke="#0369a1" stroke-width="2"/>
+            
+            <!-- Skrzynka zaciskowa -->
+            <rect x="35" y="8" width="25" height="12" fill="#0ea5e9" stroke="#0369a1" stroke-width="2" rx="1"/>
+            
+            <!-- Wał silnika -->
+            <rect x="75" y="40" width="18" height="10" fill="#94a3b8" stroke="#64748b" stroke-width="1"/>
+            
+            <!-- Przewietrznik / Wentylator -->
+            <rect x="5" y="25" width="15" height="40" rx="3" fill="#334155" stroke="#475569" stroke-width="2"/>
+            <line x1="12" y1="25" x2="12" y2="65" stroke="#475569" stroke-width="1"/>
+            
+            <!-- Łapy silnika -->
+            <rect x="25" y="70" width="10" height="8" fill="#334155"/>
+            <rect x="60" y="70" width="10" height="8" fill="#334155"/>
+            <rect x="15" y="76" width="65" height="4" fill="#475569" rx="1"/>
+        </svg>
+        <div style="font-size: 13px; font-weight: bold; margin-top: 8px; color: #38bdf8;">Silnik {P} kW</div>
+        <div style="font-size: 12px; color: #22c55e; font-weight: bold;">{I_znamionowy:.2f} A</div>
+    </div>
+</div>
+<br>
 """
 
-# Wyświetlenie wygenerowanego grafu na stronie WWW
-st.graphviz_chart(schemat_kod)
+# Renderowanie kodu HTML w Streamlit
+st.components.v1.html(html_vis, height=220)
+
 
 st.header("2. Wyniki obliczeń technicznych")
 
