@@ -80,9 +80,31 @@ elif charakterystyka == "C":
 else: # D
     Ia = In_bezp * 20
 
-# Iteracyjny dobór przekroju kabla z uwzględnieniem TRZECH warunków: Spadek, Wytrzymałość zwarciowa, SWZ
+# --- DODANIE WARUNKU OBCIĄŻALNOŚCI DŁUGOTRWAŁEJ (Uproszczone tabele normy PN-HD 60364-5-52 dla Cu/PVC) ---
+# Słownik z przybliżonymi dopuszczalnymi prądami dla przewodów miedzianych (w zależności od przekroju)
+# Dla uproszczenia bierzemy bezpieczne wartości średnie dla najpopularniejszych metod ułożenia
+obciazalnosc_Cu = {
+    1.5: 14, 2.5: 20, 4: 27, 6: 36, 10: 50, 16: 68, 25: 89, 
+    35: 110, 50: 134, 70: 171, 95: 207, 120: 239
+}
+
+# Dla aluminium prądy są mniejsze (mnożnik ok. 0.78)
+obciazalnosc_Al = {k: fill_val * 0.78 for k, fill_val in obciazalnosc_Cu.items()}
+tabele_Iz = obciazalnosc_Cu if "Miedź" in material else obciazalnosc_Al
+
+# Współczynnik poprawkowy ze względu na temperaturę otoczenia (baza 30°C)
+if temperatura <= 30:
+    f_temp = 1.0
+elif temperatura <= 40:
+    f_temp = 0.87
+elif temperatura <= 50:
+    f_temp = 0.71
+else:
+    f_temp = 0.50
+
+# Iteracyjny dobór przekroju kabla z uwzględnieniem CZTERECH warunków: Spadek, Ciepło zwarcie, SWZ, Obciążalność długotrwała
 standardowe_przekroje = [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120]
-dobrany_przekroj = standardowe_przekroje[-1] # Domyślnie najwyższy na wypadek braku spełnienia warunków
+dobrany_przekroj = standardowe_przekroje[-1]
 
 for s in standardowe_przekroje:
     # 1. Warunek spadku napięcia
@@ -100,16 +122,16 @@ for s in standardowe_przekroje:
     # 3. Warunek SWZ (Zwarcie 1-fazowe na końcu kabla)
     R_kabla = 2 * (rho * 1.5 * dlugosc) / s 
     X_kabla = 2 * (0.08 * dlugosc / 1000) 
-    
     Z_pętli = math.sqrt((Z_sieci + R_kabla)**2 + X_kabla**2)
     Ik1_koniec = 230 / Z_pętli 
     
-    # Warunek wejściowy obciążalności długotrwałej (uproszczony dla silników małomocowych)
-    # Kabel musi bezwzględnie spełniać prąd znamionowy zabezpieczenia
-    if s >= S_min_spadek and s >= S_min_cieplne and Ik1_koniec >= Ia:
+    # 4. NOWE: Warunek obciążalności długotrwałej skorygowany o temperaturę (Iz >= In_silnika)
+    Iz_realne = tabele_Iz[s] * f_temp
+    
+    # Kabel musi spełniać WSZYSTKIE cztery warunki
+    if s >= S_min_spadek and s >= S_min_cieplne and Ik1_koniec >= Ia and Iz_realne >= I_znamionowy:
         dobrany_przekroj = s
         break
-
 
 # Ponowne przeliczenie parametrów ostatecznych dla wybranego przekroju do wyświetlenia
 R_kabla_ost = 2 * (rho * 1.5 * dlugosc) / dobrany_przekroj
@@ -117,6 +139,8 @@ X_kabla_ost = 2 * (0.08 * dlugosc / 1000)
 Z_petli_ost = math.sqrt((Z_sieci + R_kabla_ost)**2 + X_kabla_ost**2)
 Ik1_ost = 230 / Z_petli_ost
 swz_spelniony = Ik1_ost >= Ia
+Iz_ost = tabele_Iz[dobrany_przekroj] * f_temp
+
 
 # --- ANIMACJA I PODGLĄD GRAFICZNY ---
 # --- ANIMACJA I PODGLĄD GRAFICZNY ---
