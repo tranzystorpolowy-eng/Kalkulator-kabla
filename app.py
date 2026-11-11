@@ -3,7 +3,7 @@ import math
 from openai import OpenAI
 
 st.set_page_config(page_title="Dobór Kabla do Silnika", page_icon="⚡", layout="wide")
-st.title("⚡ Profesjonalny Kalkulator Doboru Przewodu i SWZ")
+st.title("⚡ Profesjonalny Przemysłowy Kalkulator Doboru Przewodu i SWZ")
 
 # 1. FORMULARZ DANYCH WEJŚCIOWYCH
 st.header("1. Dane silnika i instalacji")
@@ -33,230 +33,180 @@ with col2:
     spadek_max = st.number_input("Dopuszczalny spadek napięcia (%):", min_value=0.5, max_value=10.0, value=3.0, step=0.5)
     material = st.radio("Materiał żyły:", ["Miedź (Cu)", "Aluminium (Al)"])
     temperatura = st.slider("Temperatura otoczenia (°C):", min_value=10, max_value=60, value=30, step=5)
-    st.markdown("---")
-    st.subheader("Konfiguracja linii")
-    N = st.selectbox("Liczba kabli połączonych równolegle na fazę (N):", [1, 2, 3], index=0)
-
     
     st.markdown("---")
     st.subheader("Parametry sieci i zabezpieczeń")
-    charakterystyka = st.selectbox("Charakterystyka bezpiecznika (wyłącznika):", ["B", "C", "D"], index=1)
+    
+    # TUTAJ JEST TWÓJ WYBÓR: BEZPIECZNIK VS WYŁĄCZNIK
+    typ_zabezpieczenia = st.radio("Rodzaj zabezpieczenia głównego:", ["Wyłącznik kompaktowy / modułowy (MCCB/MCB)", "Bezpiecznik topikowy (gG/gM)"])
+    
+    # Dynamiczne pokazywanie charakterystyki tylko dla wyłącznika
+    if "Wyłącznik" in typ_zabezpieczenia:
+        charakterystyka = st.selectbox("Charakterystyka wyłącznika:", ["B", "C", "D"], index=1)
+    else:
+        charakterystyka = "gG"
+        
     Z_sieci = st.number_input("Impedancja pętli zwarcia przed rozdzielnicą Z_sieci (Ω):", min_value=0.01, value=0.15, step=0.01)
     Ik = st.number_input("Spodziewany prąd zwarcia 3-faz. w rozdzielnicy Ik (A):", min_value=100, value=1500, step=100)
-    t_zwarcie = st.number_input("Czas wyłączenia zwarcia dla cieplnej wytrzymałości t (s):", min_value=0.01, max_value=5.0, value=0.1, step=0.01)
+    t_zwarcie = st.number_input("Czas wyłączenia zwarcia dla cieplnej wytrzymałości t (s):", min_value=0.01, max_value=5.0, value=0.01, step=0.01)
+    
+    st.markdown("---")
+    st.subheader("Konfiguracja linii")
+    N = st.selectbox("Liczba kabli połączonych równolegle na fazę (N):", [1, 2, 3, 4], index=0)
 
 # 2. TWARDE OBLICZENIA ELEKTRYCZNE
-# Prąd znamionowy silnika
 if U == 400:
     I_znamionowy = (P * 1000) / (math.sqrt(3) * U * cos_fi)
 else:
     I_znamionowy = (P * 1000) / (U * cos_fi)
 
-# Konduktywność materiału
 gamma = 56 if "Miedź" in material else 34
-# Rezystywność (potrzebna do SWZ)
 rho = 1 / gamma
 
-# Dobór prądu znamionowego zabezpieczenia (In_bezp) 
-# Rozbudowany szereg o wkładki topikowe i wyłączniki kompaktowe do 1000A
-szereg_In = [
-    6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100, 125, 160, 200, 224, 
-    250, 315, 355, 400, 500, 630, 710, 800, 1000
-]
-
-# Obliczamy wymagany prąd (prąd znamionowy silnika + 25% marginesu na rozruch)
+# Dobór prądu znamionowego aparatu (In_bezp) ze stopniowanego szeregu przemysłowego do 1000A
+szereg_In = [6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000]
 wymagany_prad_bezpiecznika = I_znamionowy * 1.25
-
-# Wyszukiwanie odpowiedniego bezpiecznika z szeregu
-In_bezp = szereg_In[-1]  # Domyślnie ustawiamy największy możliwy z szeregu (1000A)
+In_bezp = szereg_In[-1]
 for i in szereg_In:
     if i >= wymagany_prad_bezpiecznika:
         In_bezp = i
         break
 
+# LOGIKA POLICZENIA PRĄDU Ia W ZALEŻNOŚCI OD TWÓJ WYBORU APARATU
+if "Wyłącznik" in typ_zabezpieczenia:
+    if In_bezp <= 100:
+        if charakterystyka == "B": Ia = In_bezp * 5
+        elif charakterystyka == "C": Ia = In_bezp * 10
+        else: Ia = In_bezp * 20
+    else:
+        if charakterystyka == "B": Ia = In_bezp * 3
+        elif charakterystyka == "C": Ia = In_bezp * 5
+        else: Ia = In_bezp * 10
+else:
+    Ia = In_bezp * 15 # Dla bezpiecznika topikowego gG/gM sztywne 15x In
 
-# Wyznaczenie krotności prądu zadziałania wyzwalacza zwarciowego (Ia) wg normy dla t <= 0.4s
-# Uwzględniamy współczynnik bezpieczeństwa 1.2 lub maksymalne pasmo górne charakterystyki
-if charakterystyka == "B":
-    Ia = In_bezp * 5
-elif charakterystyka == "C":
-    Ia = In_bezp * 10
-else: # D
-    Ia = In_bezp * 20
-
-# --- DODANIE WARUNKU OBCIĄŻALNOŚCI DŁUGOTRWAŁEJ (Uproszczone tabele normy PN-HD 60364-5-52 dla Cu/PVC) ---
-# Słownik z przybliżonymi dopuszczalnymi prądami dla przewodów miedzianych (w zależności od przekroju)
-# Dla uproszczenia bierzemy bezpieczne wartości średnie dla najpopularniejszych metod ułożenia
-# --- ZAAWANSOWANE OBLICZENIA WIELOTOROWE (Dla N kabli równolegle) ---
-
-# Słownik obciążalności bazowej Cu dla jednego kabla
-obciazalnosc_Cu = {
-    1.5: 14, 2.5: 20, 4: 27, 6: 36, 10: 50, 16: 68, 25: 89, 
-    35: 110, 50: 134, 70: 171, 95: 207, 120: 239
-}
-obciazalnosc_Al = {k: fill_val * 0.78 for k, fill_val in obciazalnosc_Cu.items()}
+# Tabele obciążalności prądowej długotrwałej
+obciazalnosc_Cu = {1.5: 14, 2.5: 20, 4: 27, 6: 36, 10: 50, 16: 68, 25: 89, 35: 110, 50: 134, 70: 171, 95: 207, 120: 239}
+obciazalnosc_Al = {k: v * 0.78 for k, v in obciazalnosc_Cu.items()}
 tabele_Iz = obciazalnosc_Cu if "Miedź" in material else obciazalnosc_Al
 
-# 1. Współczynnik poprawkowy temperatury (baza 30°C)
-if temperatura <= 30:
-    f_temp = 1.0
-elif temperatura <= 40:
-    f_temp = 0.87
-elif temperatura <= 50:
-    f_temp = 0.71
-else:
-    f_temp = 0.50
+if temperatura <= 30: f_temp = 1.0
+elif temperatura <= 40: f_temp = 0.87
+elif temperatura <= 50: f_temp = 0.71
+else: f_temp = 0.50
 
-# 2. Współczynnik poprawkowy grupowania kabli obok siebie (wg normy)
-# Jeśli kabel jest jeden, brak redukcji. Jeśli więcej - obniżamy prąd ze wzgl. na wzajemne grzanie.
 f_grup = 1.0 if N == 1 else (0.80 if N == 2 else 0.70)
 
-# Rozbudowany szereg przekrojów do 240 mm2 dla przemysłu
 standardowe_przekroje = [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120, 150, 185, 240]
 dobrany_przekroj = standardowe_przekroje[-1]
-warunki_spelnione = False
 
 for s in standardowe_przekroje:
-    # Całkowity przekrój fazy (N kabli o przekroju s)
     S_calkowity = s * N
-    
-    # 1. Warunek spadku napięcia (bazuje na całkowitym przekroju)
-    if U == 400:
-        S_min_spadek = (100 * P * 1000 * dlugosc) / (gamma * spadek_max * (U ** 2))
-    else:
-        S_min_spadek = (200 * P * 1000 * dlugosc) / (gamma * spadek_max * (U ** 2))
+    if U == 400: S_min_spadek = (100 * P * 1000 * dlugosc) / (gamma * spadek_max * (U ** 2))
+    else: S_min_spadek = (200 * P * 1000 * dlugosc) / (gamma * spadek_max * (U ** 2))
         
-    # 2. Warunek wytrzymałości cieplnej zwarciowej przy zwarciu 3f
     k_coeff = 115 if "Miedź" in material else 76
-    if "XLPE" in izolacja:
-        k_coeff = 143 if "Miedź" in material else 94
+    if "XLPE" in izolacja: k_coeff = 143 if "Miedź" in material else 94
     S_min_cieplne = (Ik * math.sqrt(t_zwarcie)) / k_coeff
     
-    # 3. Warunek SWZ (Rezystancja i reaktancja wypadkowa linii maleje N-krotnie)
     R_kabla = 2 * (rho * 1.5 * dlugosc) / S_calkowity
     X_kabla = 2 * (0.08 * dlugosc / 1000) / N
     Z_pętli = math.sqrt((Z_sieci + R_kabla)**2 + X_kabla**2)
     Ik1_koniec = 230 / Z_pętli 
     
-    # 4. Warunek obciążalności długotrwałej dla linii wielotorowej
-    # Iz_linii = N * Iz_pojedynczego_kabla * f_temp * f_grup
     Iz_realne_linii = N * tabele_Iz.get(s, 300) * f_temp * f_grup
     
-    # Sprawdzamy czy pojedynczy przekrój 's' powielony N-razy spełnia kryteria
     if S_calkowity >= S_min_spadek and S_calkowity >= S_min_cieplne and Ik1_koniec >= Ia and Iz_realne_linii >= I_znamionowy:
         dobrany_przekroj = s
-        warunki_spelnione = True
         break
 
-# Parametry ostateczne do wyświetlenia na stronie
-S_ost_calkowity = dobrany_przekroj * N
-R_kabla_ost = 2 * (rho * 1.5 * dlugosc) / S_ost_calkowity
+R_kabla_ost = 2 * (rho * 1.5 * dlugosc) / (dobrany_przekroj * N)
 X_kabla_ost = 2 * (0.08 * dlugosc / 1000) / N
 Z_petli_ost = math.sqrt((Z_sieci + R_kabla_ost)**2 + X_kabla_ost**2)
 Ik1_ost = 230 / Z_petli_ost
 swz_spelniony = Ik1_ost >= Ia
-Iz_ost = N * tabele_Iz.get(dobrany_przekroj, 300) * f_temp * f_grup
 
-
-# --- ANIMACJA I PODGLĄD GRAFICZNY ---
+# --- NOWOCZESNA WIZUALIZACJA NA BIAŁYM TLE ---
 st.header("🖼️ Interaktywny podgląd instalacji i SWZ (Na żywo)")
 oznaczenie_kabla = "YKY" if "Miedź" in material else "YAKY"
 zyly = "3x" if U == 230 else "4x"
+format_kabla = f"{N}x({oznaczenie_kabla} {zyly}{dobrany_przekroj} mm²)" if N > 1 else f"{oznaczenie_kabla} {zyly}{dobrany_przekroj} mm²"
+predkosc_animacji = max(0.3, min(2.0, 20 / (I_znamionowy + 1)))
 
-# Prędkość prądu w animacji zależna od prądu znamionowego silnika
-predkosc_animacji = max(0.2, min(2.0, 15 / (I_znamionowy + 1)))
-
-# POPRAWIONE: Zmieniono {characterystyka} na {charakterystyka} w kodzie HTML poniżej
 html_vis = f"""
-<div style="background: #1e293b; padding: 25px; border-radius: 12px; display: flex; justify-content: space-around; align-items: center; font-family: Arial; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
-    <div style="text-align: center; width: 140px;">
-        <svg width="70" height="100" viewBox="0 0 80 120">
-            <rect x="5" y="5" width="70" height="110" rx="4" fill="#3f4756" stroke="#64748b" stroke-width="3"/>
-            <rect x="15" y="15" width="50" height="30" fill="#0f172a"/>
-            <text x="40" y="35" fill="#38bdf8" font-size="12" font-weight="bold" text-anchor="middle">{charakterystyka}{In_bezp}A</text>
-            <circle cx="40" cy="70" r="10" fill="#22c55e" />
+<div style="background: #ffffff; padding: 30px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; font-family: sans-serif; color: #1e293b; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <div style="background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 10px; padding: 15px; width: 150px; text-align: center;">
+        <svg width="60" height="80" viewBox="0 0 80 120" style="display: block; margin: 0 auto 10px auto;">
+            <rect x="5" y="5" width="70" height="110" rx="6" fill="#e2e8f0" stroke="#94a3b8" stroke-width="3"/>
+            <rect x="15" y="15" width="50" height="30" fill="#0f172a" rx="3"/>
+            <text x="40" y="35" fill="#38bdf8" font-size="12" font-weight="bold" text-anchor="middle">{"char. " + charakterystyka if "Wyłącznik" in typ_zabezpieczenia else "gG"}</text>
+            <circle cx="25" cy="65" r="5" fill="#ef4444"/><circle cx="40" cy="65" r="5" fill="#eab308"/><circle cx="55" cy="65" r="5" fill="#22c55e"/>
         </svg>
-        <div style="font-size: 12px; font-weight: bold; margin-top: 5px; color: #94a3b8;">Zabezpieczenie</div>
-        <div style="font-size: 10px; color: #64748b;">Wymagane Ia: {Ia:.0f}A</div>
+        <div style="font-size: 13px; font-weight: 700; color: #334155;">{"Wyłącznik MCCB" if "Wyłącznik" in typ_zabezpieczenia else "Bezpiecznik Topikowy"}</div>
+        <div style="font-size: 12px; font-weight: bold; color: #0284c7; margin-top: 2px;">In: {In_bezp} A</div>
+        <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Wymagane Ia: {Ia:.0f}A</div>
     </div>
 
-    <div style="flex-grow: 1; margin: 0 20px; text-align: center;">
-       
-        <div style="font-size: 12px; background: #334155; padding: 4px 10px; border-radius: 20px; display: inline-block; margin-bottom: 5px;">
-            <b style="color: #f59e0b;">{f"{N}x(" if N > 1 else ""}{oznaczenie_kabla} {zyly}{dobrany_przekroj} mm²{")" if N > 1 else ""}</b> ({dlugosc}m)
-        </div>
-
-            
-       
-        <svg width="100%" height="16">
-            <rect x="0" y="2" width="100%" height="12" rx="6" fill="#0f172a"/>
-            <line x1="0" y1="8" x2="100%" y2="8" stroke="#eab308" stroke-width="4" stroke-dasharray="10, 15" style="animation: flow {predkosc_animacji:.2f}s linear infinite;" />
-        </svg>
-        <style> @keyframes flow {{ 0% {{ stroke-dashoffset: 0; }} 100% {{ stroke-dashoffset: -25; }} }} </style>
-        <div style="font-size: 11px; color: #a1a1aa; margin-top: 5px;">Ik1 na końcu: <b>{Ik1_ost:.1f} A</b></div>
+    <div style="flex-grow: 1; margin: 0 15px; text-align: center;">
+        <div style="font-size: 12px; font-weight: 700; background: #f1f5f9; color: #b45309; padding: 5px 12px; border-radius: 20px; display: inline-block; margin-bottom: 8px; border: 1px solid #e2e8f0;">⚡ {format_kabla}</div>
+        <svg width="100%" height="16"><rect x="0" y="2" width="100%" height="12" rx="6" fill="#334155"/><line x1="0" y1="8" x2="100%" y2="8" stroke="#fbbf24" stroke-width="4" stroke-dasharray="8, 12" style="animation: flow {predkosc_animacji:.2f}s linear infinite;" /></svg>
+        <div style="font-size: 11px; font-weight: 600; color: #475569; margin-top: 6px;">Trasa: {dlugosc}m | Ik1 na końcu: <span style="color: #dc2626;">{Ik1_ost:.1f}A</span></div>
     </div>
 
-    <div style="text-align: center; width: 140px;">
-        <svg width="90" height="90" viewBox="0 0 100 100">
-            <rect x="20" y="20" width="55" height="50" rx="6" fill="#0284c7" stroke="#0369a1" stroke-width="2"/>
-            <rect x="35" y="8" width="25" height="12" fill="#0ea5e9"/>
-            <rect x="75" y="40" width="15" height="10" fill="#94a3b8"/>
-            <rect x="5" y="25" width="15" height="40" rx="3" fill="#334155"/>
+    <div style="background: #f0f9ff; border: 2px solid #bae6fd; border-radius: 10px; padding: 15px; width: 160px; text-align: center;">
+        <svg width="60" height="60" viewBox="0 0 100 100" style="display: block; margin: 0 auto 10px auto;">
+            <rect x="20" y="20" width="55" height="50" rx="6" fill="#0284c7" stroke="#0369a1" stroke-width="2"/><line x1="30" y1="20" x2="30" y2="70" stroke="#0369a1" stroke-width="1"/><rect x="35" y="8" width="25" height="12" fill="#0ea5e9"/><rect x="75" y="40" width="15" height="10" fill="#94a3b8"/><rect x="5" y="25" width="15" height="40" rx="3" fill="#475569"/>
         </svg>
-        <div style="font-size: 12px; font-weight: bold; margin-top: 5px; color: #38bdf8;">Silnik {P} kW</div>
-        <div style="font-size: 11px; color: #22c55e; font-weight: bold;">In: {I_znamionowy:.1f} A</div>
+        <div style="font-size: 13px; font-weight: 700; color: #0369a1;">Silnik {P} kW</div>
+        <div style="font-size: 11px; background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 4px; font-weight: bold;">In: {I_znamionowy:.1f} A</div>
     </div>
+    <style> @keyframes flow {{ 0% {{ stroke-dashoffset: 0; }} 100% {{ stroke-dashoffset: -20; }} }} </style>
 </div>
 """
-
-st.components.v1.html(html_vis, height=180)
+st.components.v1.html(html_vis, height=200)
 
 # 3. WYNIKI TECHNICZNE W KAFELKACH
 st.header("2. Wyniki analizy technicznej")
 res_col1, res_col2, res_col3 = st.columns(3)
 
 with res_col1:
-    st.info("📦 Zabezpieczenie obwodu")
-    st.markdown(f"Sugerowany wyłącznik: **{charakterystyka} {In_bezp} A**")
-    st.markdown(f"Próg wyzwolenia magnetycznego ($I_a$): **{Ia} A**")
+    st.info("📦 Dobór Aparatu Ochronnego")
+    st.markdown(f"Typ urządzenia: **{typ_zabezpieczenia.split()[0]}**")
+    st.markdown(f"Znamionowy prąd bezpiecznika ($I_n$): **{In_bezp} A**")
+    st.markdown(f"Próg zadziałania magnetycznego/topnienia ($I_a$): **{Ia:.0f} A**")
 
 with res_col2:
-    st.info("📉 Warunki zwarciowe na końcu linii")
+    st.info("📉 Parametry zwarciowe na końcu linii")
     st.markdown(f"Impedancja pętli zwarcia $Z_s$: **{Z_petli_ost:.3f} Ω**")
-    st.markdown(f"Spodziewany prąd zwarcia $I_{{k1}}$: **{Ik1_ost:.1f} A**")
+    st.markdown(f"Wyliczony prąd zwarcia 1-fazowego $I_{{k1}}$: **{Ik1_ost:.1f} A**")
 
 with res_col3:
     if swz_spelniony:
-        st.success("✅ Warunek SWZ SPEŁNIONY!")
-        st.markdown(f"Prąd zwarcia (${Ik1_ost:.1f}\\text{{ A}}$) jest WIĘKSZY niż prąd wymagany (${Ia}\\text{{ A}}$). Wyłącznik zadziała natychmiast.")
-    else:
-        st.error("❌ Warunek SWZ NIE SPEŁNIONY!")
-        st.markdown(f"Prąd zwarcia (${Ik1_ost:.1f}\\text{{ A}}$) jest ZA MAŁY, by wyzwolić człon zwarciowy (${Ia}\\text{{ A}}$)! **Zwiększ przekrój kabla lub zmień charakterystykę na B.**")
+st.success("✅ Warunek SWZ SPEŁNIONY!")
+st.markdown(f"Prąd zwarcia na końcu kabla (${Ik1_ost:.1f}\text{{ A}}$) jest wystarczający do pewnego wyzwolenia ochrony w czasie poniżej 0.4s. Aparat bezpiecznie odłączy zasilanie.")
+else:
+st.error("❌ Warunek SWZ NIE SPEŁNIONY!")
+st.markdown(f"Prąd zwarcia (${Ik1_ost:.1f}\text{{ A}}$) jest ZA MAŁY, aby wyzwolić człon zwarciowy (${Ia:.0f}\text{{ A}}$)! Zwiększ przekrój, zwiększ liczbę kabli (N), obniż impedancję źródła Z_sieci lub wybierz czulszy wyłącznik.")
 
-# 4. OPINIA AI
+#4. OPINIA AI
+
 st.header("3. Raport inżynierski Asystenta AI")
 if st.button("Generuj analizę ekspercką"):
-    if "OPENAI_API_KEY" in st.secrets:
-        client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-        with st.spinner("AI analizuje pętlę zwarcia i warunki SWZ..."):
-            
-            # Bezpiecznie sformatowany prompt bez długich linii
-            prompt = (
-                f"Jesteś inżynierem elektrykiem. Użytkownik dobrał przewód dla silnika {P}kW ({U}V).\n"
-                f"Wybrane zabezpieczenie to {characterystyka}{In_bezp}A (wymagany prąd wyłączenia Ia = {Ia}A).\n"
-                f"Długość kabla: {dlugosc}m, materiał: {material}. Dobrany przekrój: {dobrany_przekroj}mm2.\n"
-                f"Wyliczony prąd zwarcia jednofazowego na końcu linii wynosi {Ik1_ost:.1f}A.\n"
-                f"Status SWZ: {'SPEŁNIONY' if swz_spelniony else 'NIE SPEŁNIONY'}.\n\n"
-                f"Napisz zwięzłą opinię ekspercką w 3-4 punktach, używając żargonu elektryków:\n"
-                f"1. Skomentuj wynik SWZ. Jeśli warunek nie jest spełniony, wyjaśnij z czego to wynika.\n"
-                f"2. Odnieś się do doboru prądu znamionowego wyłącznika ({In_bezp}A) pod kątem rozruchu.\n"
-                f"3. Podaj jedną praktyczną wskazówkę montażową dla tych warunków ułożenia ({ulozenie})."
-            )
-            
-            response = client.chat.completions.create(
-                model="gpt-4o-mini", 
-                messages=[{"role": "user", "content": prompt}]
-            )
-            st.write(response.choices.message.content)
-    else:
-        st.warning("Brak klucza API OpenAI w Secrets – obliczenia inżynierskie i grafika działają poprawnie bez klucza.")
+if "OPENAI_API_KEY" in st.secrets:
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+with st.spinner("AI analizuje pętlę zwarcia i warunki SWZ..."):
+prompt = (
+f"Jesteś inżynierem elektrykiem. Użytkownik dobrał przewód dla silnika {P}kW ({U}V).\n"
+f"Zabezpieczenie to {typ_zabezpieczenia} o prądzie {In_bezp}A (wymagany prąd wyłączenia Ia = {Ia}A).\n"
+f"Długość kabla: {dlugosc}m, materiał: {material}, ułożony równolegle w liczbie N={N} sztuk. Dobrany przekrój pojedynczy: {dobrany_przekroj}mm2.\n"
+f"Wyliczony prąd zwarcia jednofazowego na końcu linii wynosi {Ik1_ost:.1f}A.\n"
+f"Status SWZ: {'SPEŁNIONY' if swz_spelniony else 'NIE SPEŁNIONY'}.\n\n"
+f"Napisz zwięzłą opinię ekspercką w 3-4 punktach, używając żargonu elektryków:\n"
+f"1. Skomentuj wynik SWZ w kontekście wybranego aparatu ({typ_zabezpieczenia}).\n"
+f"2. Odnieś się do decyzji o ułożeniu linii wielotorowej N={N} w kontekście montażowym i obciążalności.\n"
+f"3. Podaj jedną praktyczną wskazówkę wykonawczą dla tych warunków ułożenia ({ulozenie}) i temperatury ({temperatura}°C)."
+)
+response = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
+st.write(response.choices.message.content)
+else:
+st.warning("Brak klucza API OpenAI w Secrets – obliczenia inżynierskie i grafika działają poprawnie bez klucza.")
