@@ -53,13 +53,23 @@ gamma = 56 if "Miedź" in material else 34
 # Rezystywność (potrzebna do SWZ)
 rho = 1 / gamma
 
-# Dobór prądu znamionowego zabezpieczenia (In_bezp) - uproszczony szereg
-szereg_In = [6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100, 125, 160, 200, 250]
-In_bezp = 6
+# Dobór prądu znamionowego zabezpieczenia (In_bezp) 
+# Rozbudowany szereg o wkładki topikowe i wyłączniki kompaktowe do 1000A
+szereg_In = [
+    6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100, 125, 160, 200, 224, 
+    250, 315, 355, 400, 500, 630, 710, 800, 1000
+]
+
+# Obliczamy wymagany prąd (prąd znamionowy silnika + 25% marginesu na rozruch)
+wymagany_prad_bezpiecznika = I_znamionowy * 1.25
+
+# Wyszukiwanie odpowiedniego bezpiecznika z szeregu
+In_bezp = szereg_In[-1]  # Domyślnie ustawiamy największy możliwy z szeregu (1000A)
 for i in szereg_In:
-    if i >= I_znamionowy * 1.25: # Współczynnik 1.25 na rozruch i przeciążenie
+    if i >= wymagany_prad_bezpiecznika:
         In_bezp = i
         break
+
 
 # Wyznaczenie krotności prądu zadziałania wyzwalacza zwarciowego (Ia) wg normy dla t <= 0.4s
 # Uwzględniamy współczynnik bezpieczeństwa 1.2 lub maksymalne pasmo górne charakterystyki
