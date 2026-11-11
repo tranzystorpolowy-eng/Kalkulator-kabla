@@ -163,7 +163,7 @@ html_vis = f"""
     <style> @keyframes flow {{ 0% {{ stroke-dashoffset: 0; }} 100% {{ stroke-dashoffset: -20; }} }} </style>
 </div>
 """
-st.components.v1.html(html_vis, height=200)
+st.components.v1.html(html_vis, height=240)
 
 # 3. WYNIKI TECHNICZNE W KAFELKACH
 st.header("2. Wyniki analizy technicznej")
