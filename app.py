@@ -79,6 +79,47 @@ for s in standardowe_przekroje:
         break
 
 # Wyświetlenie wyników matematycznych
+
+# --- SEKCJA GRAFICZNA (Schemat blokowy układu) ---
+st.header("📊 Graficzny schemat zasilania układu")
+
+# Przygotowanie czytelnego oznaczenia kabla na podstawie wyboru użytkownika
+oznaczenie_kabla = "YKV" if "Miedź" in material else "YAKY"
+zyly = "3x" if U == 230 else "4x"
+
+# Generowanie kodu Graphviz, który narysuje ładny schemat
+schemat_kod = f"""
+digraph G {{
+    rankdir=LR;
+    node [fontname="Helvetica", fontsize=12, shape=box, style="filled,rounded"];
+    
+    // Definicja elementów (Zasilanie -> Kabel -> Silnik)
+    Zrodlo [label="Rozdzielnica Zasilająca\\n{U}V AC", fillcolor="#ECEFF1", color="#37474F", penwidth=2];
+    
+    Kabel [
+        label="PRZEWÓD ZASILAJĄCY\\nTyp: {oznaczenie_kabla} {zyly}{dobrany_przekroj} mm²\\nDługość: {dlugosc}m\\nIzolacja: {izolacja.split()[0]}", 
+        fillcolor="#FFF9C4", 
+        color="#FBC02D", 
+        penwidth=3,
+        shape=component
+    ];
+    
+    Silnik [
+        label="⚙️ SILNIK ELEKTRYCZNY\\nMoc: {P} kW\\nPrąd In: {I_znamionowy:.2f} A\\ncos φ: {cos_fi}", 
+        fillcolor="#BBDEFB", 
+        color="#1976D2", 
+        penwidth=2
+    ];
+    
+    // Połączenia (Linie z opisem warunków z boku)
+    Zrodlo -> Kabel [label=" Ik = {Ik}A\\n t = {t_zwarcie}s", fontsize=10, fontcolor="#757575", color="#B0BEC5"];
+    Kabel -> Silnik [label=" ΔU = {spadek_max}% max", fontsize=10, fontcolor="#757575", color="#B0BEC5"];
+}}
+"""
+
+# Wyświetlenie wygenerowanego grafu na stronie WWW
+st.graphviz_chart(schemat_kod)
+
 st.header("2. Wyniki obliczeń technicznych")
 
 col_res1, col_res2 = st.columns(2)
