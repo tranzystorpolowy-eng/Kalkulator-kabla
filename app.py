@@ -283,6 +283,13 @@ else:
                 <rect x="20" y="20" width="55" height="50" rx="6" fill="#0284c7" stroke="#0369a1" stroke-width="2"/><line x1="30" y1="20" x2="30" y2="70" stroke="#0369a1" stroke-width="1"/><rect x="35" y="8" width="25" height="12" fill="#0ea5e9"/><rect x="75" y="40" width="15" height="10" fill="#94a3b8"/><rect x="5" y="25" width="15" height="40" rx="3" fill="#475569"/>
             </svg>
             <div style="font-size: 13px; font-weight: 700; color: #0369a1;">Silnik {P} kW</div>
+            In: {I_znamionowy:.1f} A
+
+ @keyframes flow {{ 0% {{ stroke-dashoffset: 0; }} 100% {{ stroke-dashoffset: -20; }} }} 
+
+
+
+"""
 
 
 # Renderowanie kodu HTML na stronie WWW ze stabilną wysokością
