@@ -177,6 +177,7 @@ else:
 
 # --- NOWOCZESNA DYNAMICZNA WIZUALIZACJA (DOL / FALOWNIK) - POPRAWIONA ---
 # --- NOWOCZESNA DYNAMICZNA WIZUALIZACJA (DOL / FALOWNIK) - OSTATECZNA NAPRAWA ---
+# --- RESPONSYWNA DYNAMICZNA WIZUALIZACJA (DOL / FALOWNIK) ---
 st.header("🖼️ Graficzny schemat instalacji zasilającej")
 
 oznaczenie_kabla = "YKY" if "Miedź" in material else "YAKY"
@@ -184,12 +185,62 @@ zyly = "3x" if U == 230 else "4x"
 format_kabla = f"{N}x({oznaczenie_kabla} {zyly}{dobrany_przekroj} mm²)" if N > 1 else f"{oznaczenie_kabla} {zyly}{dobrany_przekroj} mm²"
 predkosc_animacji = max(0.3, min(2.0, 20 / (I_znamionowy + 1)))
 
-# Wspólny styl animacji przeniesiony na sam początek, aby nie psuł tekstu przy silniku
+# Inteligentne style CSS obsługujące automatyczną responsywność (Media Queries)
 css_style = f"""
 <style>
     @keyframes flow_anim {{
         0% {{ stroke-dashoffset: 0; }}
         100% {{ stroke-dashoffset: -20; }}
+    }}
+    .main-container {{
+        background: #ffffff; 
+        padding: 25px; 
+        border-radius: 12px; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        font-family: sans-serif; 
+        color: #1e293b; 
+        border: 1px solid #e2e8f0; 
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    }}
+    .cable-section {{
+        flex-grow: 1; 
+        margin: 0 10px; 
+        text-align: center; 
+        min-width: 80px;
+    }}
+    .cable-line {{
+        display: block;
+        width: 100%;
+        height: 16px;
+    }}
+    /* Style dla urządzeń mobilnych (Ekrany pionowe, smartfony) */
+    @media (max-width: 768px) {{
+        .main-container {{
+            flex-direction: column;
+            gap: 20px;
+            padding: 15px;
+        }}
+        .cable-section {{
+            width: 100%;
+            margin: 5px 0;
+        }}
+        .cable-line {{
+            width: 40px;
+            height: 60px;
+            margin: 0 auto;
+        }}
+        .cable-line rect {{
+            width: 12px;
+            height: 100%;
+            x: 14px;
+            y: 0;
+        }}
+        .cable-line line {{
+            x1: 20px; y1: 0;
+            x2: 20px; y2: 100%;
+        }}
     }}
 </style>
 """
@@ -203,9 +254,9 @@ if "falownika" in methoda_zasilania:
             break
     format_kabla_sieciowego = f"{oznaczenie_kabla} {zyly}{przekroj_sieciowy} mm²"
 
-    # WIZUALIZACJA Z FALOWNIKIEM
+    # WIZUALIZACJA Z FALOWNIKIEM (Responsywna)
     html_vis = css_style + f"""
-    <div style="background: #ffffff; padding: 25px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; font-family: sans-serif; color: #1e293b; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow-x: auto;">
+    <div class="main-container">
         
         <!-- ELEMENT 1: ROZDZIELNICA -->
         <div style="background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 10px; padding: 12px; width: 130px; text-align: center; flex-shrink: 0;">
@@ -220,9 +271,9 @@ if "falownika" in methoda_zasilania:
         </div>
 
         <!-- PRZEWÓD ZASILAJĄCY ROZDZIELNICA -> FALOWNIK -->
-        <div style="flex-grow: 1; margin: 0 10px; text-align: center; min-width: 80px;">
+        <div class="cable-section">
             <div style="font-size: 10px; font-weight: 700; background: #f1f5f9; color: #475569; padding: 3px 8px; border-radius: 10px; display: inline-block; margin-bottom: 4px;">Kabel zasilający VSD</div>
-            <svg width="100%" height="12"><rect x="0" y="2" width="100%" height="8" rx="4" fill="#475569"/><line x1="0" y1="6" x2="100%" y2="6" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="6, 10" style="animation: flow_anim {predkosc_animacji:.2f}s linear infinite;" /></svg>
+            <svg class="cable-line"><rect x="0" y="2" width="100%" height="8" rx="4" fill="#475569"/><line x1="0" y1="6" x2="100%" y2="6" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="6, 10" style="animation: flow_anim {predkosc_animacji:.2f}s linear infinite;" /></svg>
             <div style="font-size: 9px; color: #64748b; margin-top: 3px;">{format_kabla_sieciowego}</div>
         </div>
 
@@ -242,9 +293,9 @@ if "falownika" in methoda_zasilania:
         </div>
 
         <!-- PRZEWÓD SILNIKOWY FALOWNIK -> SILNIK -->
-        <div style="flex-grow: 1; margin: 0 10px; text-align: center; min-width: 90px;">
+        <div class="cable-section">
             <div style="font-size: 10px; font-weight: 700; background: #fff7ed; color: #c2410c; padding: 3px 8px; border-radius: 10px; display: inline-block; margin-bottom: 4px;">Kabel silnikowy (Dobór)</div>
-            <svg width="100%" height="12"><rect x="0" y="2" width="100%" height="8" rx="4" fill="#334155"/><line x1="0" y1="6" x2="100%" y2="6" stroke="#fbbf24" stroke-width="3" stroke-dasharray="6, 10" style="animation: flow_anim {predkosc_animacji:.2f}s linear infinite;" /></svg>
+            <svg class="cable-line"><rect x="0" y="2" width="100%" height="8" rx="4" fill="#334155"/><line x1="0" y1="6" x2="100%" y2="6" stroke="#fbbf24" stroke-width="3" stroke-dasharray="6, 10" style="animation: flow_anim {predkosc_animacji:.2f}s linear infinite;" /></svg>
             <div style="font-size: 10px; font-weight: bold; color: #b45309; margin-top: 3px;">{format_kabla}</div>
             <div style="font-size: 9px; color: #9a3412;">Długość: {dlugosc}m | Ekranowany EMC</div>
         </div>
@@ -265,10 +316,11 @@ if "falownika" in methoda_zasilania:
     <br>
     """
 else:
-    # WIZUALIZACJA DOL
+    # WIZUALIZACJA DOL (Responsywna)
     html_vis = css_style + f"""
-    <div style="background: #ffffff; padding: 30px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; font-family: sans-serif; color: #1e293b; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-        <div style="background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 10px; padding: 15px; width: 150px; text-align: center;">
+    <div class="main-container">
+        <!-- ROZDZIELNICA -->
+        <div style="background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 10px; padding: 15px; width: 150px; text-align: center; flex-shrink: 0;">
             <svg width="60" height="80" viewBox="0 0 80 120" style="display: block; margin: 0 auto 10px auto;">
                 <rect x="5" y="5" width="70" height="110" rx="6" fill="#e2e8f0" stroke="#94a3b8" stroke-width="3"/>
                 <rect x="15" y="15" width="50" height="30" fill="#0f172a" rx="3"/>
@@ -280,22 +332,18 @@ else:
             <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Wymagane Ia: {Ia:.0f}A</div>
         </div>
 
-        <div style="flex-grow: 1; margin: 0 15px; text-align: center;">
+        <!-- KABEL -->
+        <div class="cable-section">
             <div style="font-size: 12px; font-weight: 700; background: #f1f5f9; color: #b45309; padding: 5px 12px; border-radius: 20px; display: inline-block; margin-bottom: 8px; border: 1px solid #e2e8f0;">⚡ {format_kabla}</div>
-            <svg width="100%" height="16"><rect x="0" y="2" width="100%" height="12" rx="6" fill="#334155"/><line x1="0" y1="8" x2="100%" y2="8" stroke="#fbbf24" stroke-width="4" stroke-dasharray="8, 12" style="animation: flow_anim {predkosc_animacji:.2f}s linear infinite;" /></svg>
+            <svg class="cable-line"><rect x="0" y="2" width="100%" height="12" rx="6" fill="#334155"/><line x1="0" y1="8" x2="100%" y2="8" stroke="#fbbf24" stroke-width="4" stroke-dasharray="8, 12" style="animation: flow_anim {predkosc_animacji:.2f}s linear infinite;" /></svg>
             <div style="font-size: 11px; font-weight: 600; color: #475569; margin-top: 6px;">Trasa: {dlugosc}m | Ik1 na końcu: <span style="color: #dc2626;">{Ik1_ost:.1f}A</span></div>
         </div>
 
-        <div style="background: #f0f9ff; border: 2px solid #bae6fd; border-radius: 10px; padding: 15px; width: 160px; text-align: center;">
+        <!-- SILNIK -->
+        <div style="background: #f0f9ff; border: 2px solid #bae6fd; border-radius: 10px; padding: 15px; width: 160px; text-align: center; flex-shrink: 0;">
             <svg width="60" height="60" viewBox="0 0 100 100" style="display: block; margin: 0 auto 10px auto;">
-                <rect x="20" y="20" width="55" height="50" rx="6" fill="#0284c7" stroke="#0369a1" stroke-width="2"/><line x1="30" y1="20" x2="30" y2="70" stroke="#0369a1" stroke-width="1"/><rect x="35" y="8" width="25" height="12" fill="#0ea5e9"/><rect x="75" y="40" width="15" height="10" fill="#94a3b8"/><rect x="5" y="25" width="15" height="40" rx="3" fill="#475569"/>
-            </svg>
-            <div style="font-size: 13px; font-weight: 700; color: #0369a1;">Silnik {P} kW</div>
-            <div style="font-size: 10px; background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 4px; font-weight: bold;">In: {I_znamionowy:.1f} A</div>
-        </div>
-    </div>
-    <br>
-    """
+Silnik {P} kW
+In: {I_znamionowy:.1f} A
 
 
 
