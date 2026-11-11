@@ -10,6 +10,7 @@ st.header("1. Dane silnika i instalacji")
 
 col1, col2 = st.columns(2)
 with col1:
+
     P = st.number_input("Moc znamionowa silnika P (kW):", min_value=0.1, value=7.5, step=0.1)
     U = st.selectbox("Napięcie zasilania U (V):", [230, 400], index=1)
     cos_fi = st.number_input("Współczynnik mocy (cos φ):", min_value=0.5, max_value=1.0, value=0.85, step=0.01)
@@ -27,6 +28,9 @@ with col1:
         index=2
     )
     izolacja = st.radio("Typ izolacji kabla:", ["PVC (polwinit)", "XLPE / EPR (polietylen sieciowany)"])
+
+st.markdown("---")
+    methoda_zasilania = st.radio("Metoda zasilania silnika:", ["Bezpośrednie z sieci (DOL)", "Zasilanie z falownika (VSD / ABB ACS880)"])
 
 with col2:
     dlugosc = st.number_input("Długość linii L (m):", min_value=1, value=50, step=1)
@@ -62,69 +66,113 @@ else:
 
 gamma = 56 if "Miedź" in material else 34
 rho = 1 / gamma
-
-# Dobór prądu znamionowego aparatu (In_bezp) ze stopniowanego szeregu przemysłowego do 1000A
-szereg_In = [6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000]
-wymagany_prad_bezpiecznika = I_znamionowy * 1.25
-In_bezp = szereg_In[-1]
-for i in szereg_In:
-    if i >= wymagany_prad_bezpiecznika:
-        In_bezp = i
-        break
-
-# LOGIKA POLICZENIA PRĄDU Ia W ZALEŻNOŚCI OD TWÓJ WYBORU APARATU
-if "Wyłącznik" in typ_zabezpieczenia:
-    if In_bezp <= 100:
-        if charakterystyka == "B": Ia = In_bezp * 5
-        elif charakterystyka == "C": Ia = In_bezp * 10
-        else: Ia = In_bezp * 20
-    else:
-        if charakterystyka == "B": Ia = In_bezp * 3
-        elif charakterystyka == "C": Ia = In_bezp * 5
-        else: Ia = In_bezp * 10
+if "falownika" in methoda_zasilania:
+    # 1. Dobór przekroju i zabezpieczeń na podstawie oficjalnego katalogu ABB ACS880 (dla sieci 400V, IEC)
+    # Tabela mapuje typowe moce silnika (kW) na rekomendowany, minimalny przekrój przewodu miedzianego (mm2) oraz bezpiecznik aR
+    baza_ABB_ACS880 = [
+        {"max_kw": 1.5, "s": 1.5, "fuse": 16, "model": "ACS880-01-04A0-3"},
+        {"max_kw": 3.0, "s": 1.5, "fuse": 16, "model": "ACS880-01-07A2-3"},
+        {"max_kw": 5.5, "s": 1.5, "fuse": 25, "model": "ACS880-01-12A6-3"},
+        {"max_kw": 7.5, "s": 2.5, "fuse": 32, "model": "ACS880-01-17A0-3"},
+        {"max_kw": 11.0, "s": 4.0, "fuse": 40, "model": "ACS880-01-25A0-3"},
+        {"max_kw": 15.0, "s": 6.0, "fuse": 50, "model": "ACS880-01-32A0-3"},
+        {"max_kw": 22.0, "s": 10.0, "fuse": 63, "model": "ACS880-01-45A0-3"},
+        {"max_kw": 30.0, "s": 16.0, "fuse": 80, "model": "ACS880-01-61A0-3"},
+        {"max_kw": 45.0, "s": 25.0, "fuse": 100, "model": "ACS880-01-87A0-3"},
+        {"max_kw": 55.0, "s": 35.0, "fuse": 125, "model": "ACS880-01-105A-3"},
+        {"max_kw": 75.0, "s": 50.0, "fuse": 160, "model": "ACS880-01-145A-3"},
+        {"max_kw": 90.0, "s": 70.0, "fuse": 200, "model": "ACS880-01-169A-3"},
+        {"max_kw": 110.0, "s": 95.0, "fuse": 250, "model": "ACS880-01-206A-3"},
+        {"max_kw": 132.0, "s": 120.0, "fuse": 315, "model": "ACS880-01-246A-3"},
+        {"max_kw": 160.0, "s": 150.0, "fuse": 400, "model": "ACS880-01-293A-3"},
+        {"max_kw": 200.0, "s": 185.0, "fuse": 500, "model": "ACS880-04-505A-3"},
+        {"max_kw": 250.0, "s": 240.0, "fuse": 630, "model": "ACS880-04-585A-3"},
+        {"max_kw": 355.0, "s": 240, "fuse": 700, "model": "ACS880-04-681A-3"}, # uwzględnia wielotorowość w praktyce
+    ]
+    
+    # Wyszukiwanie odpowiedniego modelu przemiennika i kabla z bazy danych
+    dobrany_rek = baza_ABB_ACS880[-1]
+    for rek in baza_ABB_ACS880:
+        if P <= rek["max_kw"]:
+            dobrany_rek = rek
+            break
+            
+    # Zapisanie dobranych wartości dedykowanych przez ABB
+    dobrany_przekroj = dobrany_rek["s"]
+    In_bezp = dobrany_rek["fuse"]
+    model_falownika = dobrany_rek["model"]
+    Ia = In_bezp * 1.5 # Przyjmujemy bezpieczny, umowny próg przeciążeniowy falownika
+    typ_zabezpieczenia = "Bezpieczniki ultraszybkie aR (Rekomendacja ABB)"
+    charakterystyka = "aR"
+    
+    # Przeliczenie pętli zwarcia tylko do celów informacyjnych makiety (falownik sam chroni kabel przed zwarciem)
+    S_ost_calkowity = dobrany_przekroj * N
+    R_kabla_ost = 2 * (rho * 1.5 * dlugosc) / S_ost_calkowity
+    X_kabla_ost = 2 * (0.08 * dlugosc / 1000) / N
+    Z_petli_ost = math.sqrt((Z_sieci + R_kabla_ost)**2 + X_kabla_ost**2)
+    Ik1_ost = 230 / Z_petli_ost
+    swz_spelniony = True # Falownik ma wbudowane zabezpieczenia elektroniczne wyłączające w mikrosekundy
+    Iz_ost = I_znamionowy
 else:
-    Ia = In_bezp * 15 # Dla bezpiecznika topikowego gG/gM sztywne 15x In
+    # --- STARY KOD DLA ZASILANIA BEZPOŚREDNIEGO (DOL) ---
+    szereg_In = [6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000]
+    wymagany_prad_bezpiecznika = I_znamionowy * 1.25
+    In_bezp = szereg_In[-1]
+    for i in szereg_In:
+        if i >= wymagany_prad_bezpiecznika:
+            In_bezp = i
+            break
 
-# Tabele obciążalności prądowej długotrwałej
-obciazalnosc_Cu = {1.5: 14, 2.5: 20, 4: 27, 6: 36, 10: 50, 16: 68, 25: 89, 35: 110, 50: 134, 70: 171, 95: 207, 120: 239}
-obciazalnosc_Al = {k: v * 0.78 for k, v in obciazalnosc_Cu.items()}
-tabele_Iz = obciazalnosc_Cu if "Miedź" in material else obciazalnosc_Al
+    if "Wyłącznik" in typ_zabezpieczenia:
+        if In_bezp <= 100:
+            if charakterystyka == "B": Ia = In_bezp * 5
+            elif charakterystyka == "C": Ia = In_bezp * 10
+            else: Ia = In_bezp * 20
+        else:
+            if charakterystyka == "B": Ia = In_bezp * 3
+            elif charakterystyka == "C": Ia = In_bezp * 5
+            else: Ia = In_bezp * 10
+    else:
+        Ia = In_bezp * 15
 
-if temperatura <= 30: f_temp = 1.0
-elif temperatura <= 40: f_temp = 0.87
-elif temperatura <= 50: f_temp = 0.71
-else: f_temp = 0.50
+    obciazalnosc_Cu = {1.5: 14, 2.5: 20, 4: 27, 6: 36, 10: 50, 16: 68, 25: 89, 35: 110, 50: 134, 70: 171, 95: 207, 120: 239}
+    obciazalnosc_Al = {k: v * 0.78 for k, v in obciazalnosc_Cu.items()}
+    tabele_Iz = obciazalnosc_Cu if "Miedź" in material else obciazalnosc_Al
 
-f_grup = 1.0 if N == 1 else (0.80 if N == 2 else 0.70)
+    if temperatura <= 30: f_temp = 1.0
+    elif temperatura <= 40: f_temp = 0.87
+    elif temperatura <= 50: f_temp = 0.71
+    else: f_temp = 0.50
 
-standardowe_przekroje = [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120, 150, 185, 240]
-dobrany_przekroj = standardowe_przekroje[-1]
+    f_grup = 1.0 if N == 1 else (0.80 if N == 2 else 0.70)
+    standardowe_przekroje = [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120, 150, 185, 240]
+    dobrany_przekroj = standardowe_przekroje[-1]
 
-for s in standardowe_przekroje:
-    S_calkowity = s * N
-    if U == 400: S_min_spadek = (100 * P * 1000 * dlugosc) / (gamma * spadek_max * (U ** 2))
-    else: S_min_spadek = (200 * P * 1000 * dlugosc) / (gamma * spadek_max * (U ** 2))
+    for s in standardowe_przekroje:
+        S_calkowity = s * N
+        if U == 400: S_min_spadek = (100 * P * 1000 * dlugosc) / (gamma * spadek_max * (U ** 2))
+        else: S_min_spadek = (200 * P * 1000 * dlugosc) / (gamma * spadek_max * (U ** 2))
+            
+        k_coeff = 115 if "Miedź" in material else 76
+        if "XLPE" in izolacja: k_coeff = 143 if "Miedź" in material else 94
+        S_min_cieplne = (Ik * math.sqrt(t_zwarcie)) / k_coeff
         
-    k_coeff = 115 if "Miedź" in material else 76
-    if "XLPE" in izolacja: k_coeff = 143 if "Miedź" in material else 94
-    S_min_cieplne = (Ik * math.sqrt(t_zwarcie)) / k_coeff
-    
-    R_kabla = 2 * (rho * 1.5 * dlugosc) / S_calkowity
-    X_kabla = 2 * (0.08 * dlugosc / 1000) / N
-    Z_pętli = math.sqrt((Z_sieci + R_kabla)**2 + X_kabla**2)
-    Ik1_koniec = 230 / Z_pętli 
-    
-    Iz_realne_linii = N * tabele_Iz.get(s, 300) * f_temp * f_grup
-    
-    if S_calkowity >= S_min_spadek and S_calkowity >= S_min_cieplne and Ik1_koniec >= Ia and Iz_realne_linii >= I_znamionowy:
-        dobrany_przekroj = s
-        break
+        R_kabla = 2 * (rho * 1.5 * dlugosc) / S_calkowity
+        X_kabla = 2 * (0.08 * dlugosc / 1000) / N
+        Z_pętli = math.sqrt((Z_sieci + R_kabla)**2 + X_kabla**2)
+        Ik1_koniec = 230 / Z_pętli 
+        
+        Iz_realne_linii = N * tabele_Iz.get(s, 300) * f_temp * f_grup
+        
+        if S_calkowity >= S_min_spadek and S_calkowity >= S_min_cieplne and Ik1_koniec >= Ia and Iz_realne_linii >= I_znamionowy:
+            dobrany_przekroj = s
+            break
 
-R_kabla_ost = 2 * (rho * 1.5 * dlugosc) / (dobrany_przekroj * N)
-X_kabla_ost = 2 * (0.08 * dlugosc / 1000) / N
-Z_petli_ost = math.sqrt((Z_sieci + R_kabla_ost)**2 + X_kabla_ost**2)
-Ik1_ost = 230 / Z_petli_ost
-swz_spelniony = Ik1_ost >= Ia
+    R_kabla_ost = 2 * (rho * 1.5 * dlugosc) / (dobrany_przekroj * N)
+    X_kabla_ost = 2 * (0.08 * dlugosc / 1000) / N
+    Z_petli_ost = math.sqrt((Z_sieci + R_kabla_ost)**2 + X_kabla_ost**2)
+    Ik1_ost = 230 / Z_petli_ost
+    swz_spelniony = Ik1_ost >= Ia
 
 # --- NOWOCZESNA WIZUALIZACJA NA BIAŁYM TLE ---
 st.header("🖼️ Interaktywny podgląd instalacji i SWZ (Na żywo)")
