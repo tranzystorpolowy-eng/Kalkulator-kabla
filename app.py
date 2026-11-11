@@ -190,23 +190,25 @@ with res_col3:
 
 #4. OPINIA AI
 
+# 4. OPINIA AI
 st.header("3. Raport inżynierski Asystenta AI")
 if st.button("Generuj analizę ekspercką"):
-if "OPENAI_API_KEY" in st.secrets:
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-with st.spinner("AI analizuje pętlę zwarcia i warunki SWZ..."):
-prompt = (
-f"Jesteś inżynierem elektrykiem. Użytkownik dobrał przewód dla silnika {P}kW ({U}V).\n"
-f"Zabezpieczenie to {typ_zabezpieczenia} o prądzie {In_bezp}A (wymagany prąd wyłączenia Ia = {Ia}A).\n"
-f"Długość kabla: {dlugosc}m, materiał: {material}, ułożony równolegle w liczbie N={N} sztuk. Dobrany przekrój pojedynczy: {dobrany_przekroj}mm2.\n"
-f"Wyliczony prąd zwarcia jednofazowego na końcu linii wynosi {Ik1_ost:.1f}A.\n"
-f"Status SWZ: {'SPEŁNIONY' if swz_spelniony else 'NIE SPEŁNIONY'}.\n\n"
-f"Napisz zwięzłą opinię ekspercką w 3-4 punktach, używając żargonu elektryków:\n"
-f"1. Skomentuj wynik SWZ w kontekście wybranego aparatu ({typ_zabezpieczenia}).\n"
-f"2. Odnieś się do decyzji o ułożeniu linii wielotorowej N={N} w kontekście montażowym i obciążalności.\n"
-f"3. Podaj jedną praktyczną wskazówkę wykonawczą dla tych warunków ułożenia ({ulozenie}) i temperatury ({temperatura}°C)."
-)
-response = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
-st.write(response.choices.message.content)
-else:
-st.warning("Brak klucza API OpenAI w Secrets – obliczenia inżynierskie i grafika działają poprawnie bez klucza.")
+    if "OPENAI_API_KEY" in st.secrets:
+        client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        with st.spinner("AI analizuje pętlę zwarcia i warunki SWZ..."):
+            prompt = (
+                f"Jesteś inżynierem elektrykiem. Użytkownik dobrał przewód dla silnika {P}kW ({U}V).\n"
+                f"Zabezpieczenie to {typ_zabezpieczenia} o prądzie {In_bezp}A (wymagany prąd wyłączenia Ia = {Ia}A).\n"
+                f"Długość kabla: {dlugosc}m, materiał: {material}, ułożony równolegle w liczbie N={N} sztuk. Dobrany przekrój pojedynczy: {dobrany_przekroj}mm2.\n"
+                f"Wyliczony prąd zwarcia jednofazowego na końcu linii wynosi {Ik1_ost:.1f}A.\n"
+                f"Status SWZ: {'SPEŁNIONY' if swz_spelniony else 'NIE SPEŁNIONY'}.\n\n"
+                f"Napisz zwięzłą opinię ekspercką w 3-4 punktach, używając żargonu elektryków:\n"
+                f"1. Skomentuj wynik SWZ w kontekście wybranego aparatu ({typ_zabezpieczenia}).\n"
+                f"2. Odnieś się do decyzji o ułożeniu linii wielotorowej N={N} w kontekście montażowym i obciążalności.\n"
+                f"3. Podaj jedną praktyczną wskazówkę wykonawczą dla tych warunków ułożenia ({ulozenie}) i temperatury ({temperatura}°C)."
+            )
+            response = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
+            st.write(response.choices.message.content)
+    else:
+        st.warning("Brak klucza API OpenAI w Secrets – obliczenia inżynierskie i grafika działają poprawnie bez klucza.")
+
