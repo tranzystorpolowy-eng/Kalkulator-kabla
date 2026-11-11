@@ -170,7 +170,7 @@ res_col1, res_col2, res_col3 = st.columns(3)
 
 with res_col1:
     st.info("📦 Zabezpieczenie obwodu")
-    st.markdown(f"Sugerowany wyłącznik: **{characterystyka} {In_bezp} A**")
+    st.markdown(f"Sugerowany wyłącznik: **{charakterystyka} {In_bezp} A**")
     st.markdown(f"Próg wyzwolenia magnetycznego ($I_a$): **{Ia} A**")
 
 with res_col2:
