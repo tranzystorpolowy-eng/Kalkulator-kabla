@@ -11,16 +11,32 @@ st.header("1. Dane silnika i instalacji")
 col1, col2 = st.columns(2)
 with col1:
     P = st.number_input("Moc znamionowa silnika P (kW):", min_value=0.1, value=7.5, step=0.1)
-    U = st.selectbox("Napięcie zasilania U (V):", [400, 230], index=0)
+    U = st.selectbox("Napięcie zasilania U (V):", [230, 400], index=1)
     cos_fi = st.number_input("Współczynnik mocy (cos φ):", min_value=0.5, max_value=1.0, value=0.85, step=0.01)
+    
+    # NOWE POLE: Sposób ułożenia kabla
+    ulozenie = st.selectbox(
+        "Sposób ułożenia kabla (wg normy):",
+        [
+            "A1 - Przewody jednożyłowe w rurze w ścianie izolowanej cieplnie",
+            "B1 - Przewody jednożyłowe w rurze na ścianie drewnianej",
+            "C - Kabel wielożyłowy bezpośrednio na ścianie lub w korytku",
+            "D1 - Kabel wielożyłowy w rurze w ziemi",
+            "D2 - Kabel wielożyłowy bezpośrednio w ziemi",
+            "E - Kabel wielożyłowy w powietrzu (wolna przestrzeń)"
+        ],
+        index=2
+    )
 
 with col2:
     dlugosc = st.number_input("Długość linii L (m):", min_value=1, value=30, step=1)
     spadek_max = st.number_input("Dopuszczalny spadek napięcia (%):", min_value=0.5, max_value=10.0, value=3.0, step=0.5)
     material = st.radio("Materiał żyły:", ["Miedź (Cu)", "Aluminium (Al)"])
+    
+    # NOWE POLE: Temperatura otoczenia
+    temperatura = st.slider("Temperatura otoczenia (°C):", min_value=10, max_value=60, value=30, step=5)
 
 # 2. TWARDE OBLICZENIA ELEKTRYCZNE (Backend inżynierski)
-# Obliczenie prądu znamionowego Iz
 if U == 400:
     I_znamionowy = (P * 1000) / (math.sqrt(3) * U * cos_fi)
 else:
@@ -29,7 +45,7 @@ else:
 # Konduktywność materiału
 gamma = 56 if "Miedź" in material else 34
 
-# Minimalny przekrój ze względu na spadek napięcia S = (200 * P * L) / (gamma * dU% * U^2) dla 3f
+# Minimalny przekrój ze względu na spadek napięcia
 if U == 400:
     S_min = (100 * P * 1000 * dlugosc) / (gamma * spadek_max * (U ** 2))
 else:
@@ -52,21 +68,24 @@ st.success(f"Sugerowany minimalny przekrój kabla (ze wp. na spadek napięcia): 
 st.header("3. Opinia i zalecenia Asystenta AI")
 
 if st.button("Wygeneruj raport i zalecenia montażowe"):
-    # Tutaj aplikacja pobiera ukryty klucz OpenAI z ustawień serwera
     if "OPENAI_API_KEY" in st.secrets:
         client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
         
         with st.spinner("AI analizuje warunki układania kabla..."):
             prompt = f"""
-            Jesteś doświadczonym inżynierem elektrykiem. 
+            Jesteś doświadczonym inżynierem elektrykiem, ekspertem od normy PN-HD 60364-5-52. 
             Użytkownik dobrał kabel dla silnika {P} kW, napięcie {U}V, cosφ={cos_fi}, długość trasy {dlugosc}m.
-            Materiał żyły: {material}. Wyliczony prąd to {I_znamionowy:.2f}A. Wyliczony przekrój to {dobrany_przekroj} mm2.
+            Materiał żyły: {material}. Wyliczony prąd to {I_znamionowy:.2f}A. Wyliczony przekrój ze względu na spadek napięcia to {dobrany_przekroj} mm2.
+            
+            Warunki montażowe wprowadzone przez użytkownika:
+            - Sposób ułożenia kabla: {ulozenie}
+            - Temperatura otoczenia: {temperatura} °C
             
             Napisz krótką, ekspercką opinię (max 4-5 zdań w punktach):
-            1. Jak prąd rozruchowy tego silnika może wpłynąć na ten dobór?
-            2. Na co zwrócić uwagę przy sposobie ułożenia kabla (np. w ziemi, w korytku) w kontekście obciążalności długotrwałej?
-            3. Jakie zabezpieczenie nadprądowe (charakterystyka gG, C lub D) i o jakim prądzie znamionowym wstępnie rekomendujesz?
-            Pisz konkretnie, językiem elektryków.
+            1. Jak podana temperatura otoczenia ({temperatura}°C) oraz sposób ułożenia wpływają na obciążalność długotrwałą kabla (czy potrzebne są współczynniki poprawkowe, czy przekrój {dobrany_przekroj} mm2 na pewno wystarczy)?
+            2. Jak prąd rozruchowy tego silnika może wpłynąć na spadek napięcia w momencie startu?
+            3. Jakie zabezpieczenie nadprądowe (charakterystyka gG, C lub D) i o jakim prądzie znamionowym wstępnie rekomendujesz do tego układu?
+            Pisz konkretnie, zwięźle, czystym językiem elektryków.
             """
             
             response = client.chat.completions.create(
@@ -75,4 +94,4 @@ if st.button("Wygeneruj raport i zalecenia montażowe"):
             )
             st.write(response.choices.message.content)
     else:
-        st.warning("Aplikacja działa w trybie offline (brak klucza API do komentarza AI, ale obliczenia powyżej są poprawne!).")
+        st.warning("Aplikacja działa w trybie offline (brak klucza API w ustawieniach Streamlita). Wyliczenia matematyczne powyżej są poprawne, ale funkcja doradztwa AI wymaga klucza.")
