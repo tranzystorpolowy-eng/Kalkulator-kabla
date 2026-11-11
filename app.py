@@ -195,13 +195,14 @@ with res_col3:
         st.success("✅ Warunek SWZ SPEŁNIONY!")
         st.markdown("**Wzór sprawdzający normy PN-HD 60364-4-41:**")
         st.latex(rf"I_{{k1}} \ge I_a \implies {Ik1_ost:.1f}\text{{ A}} \ge {Ia:.0f}\text{{ A}}")
-        st.markdown("<span style='color: #22c55e; font-weight: bold;'>Wynik: POZYTYWNY.</span> Prąd zwarcia na końcu kabla jest wystarczający do natychmiastowego wyzwolenia ochrony w czasie t ≤ 0.4s.", unsafe_allow_cards=True)
+        # POPRAWIONE: Zmieniono unsafe_allow_cards na unsafe_allow_html
+        st.markdown("<span style='color: #22c55e; font-weight: bold;'>Wynik: POZYTYWNY.</span> Prąd zwarcia na końcu kabla jest wystarczający do natychmiastowego wyzwolenia ochrony w czasie t ≤ 0.4s.", unsafe_allow_html=True)
     else:
         st.error("❌ Warunek SWZ NIE SPEŁNIONY!")
         st.markdown("**Wzór sprawdzający normy PN-HD 60364-4-41:**")
         st.latex(rf"I_{{k1}} \ge I_a \implies {Ik1_ost:.1f}\text{{ A}} \not\ge {Ia:.0f}\text{{ A}}")
-        st.markdown("<span style='color: #ef4444; font-weight: bold;'>Wynik: NEGATYWNY.</span> Prąd zwarcia jest **ZA MAŁY**, aby wyzwolić człon zwarciowy! Zagrożenie porażeniowe. Zwiększ przekrój miedzi, zwiększ liczbę kabli (N) lub wybierz bezpiecznik o czulszej charakterystyce.", unsafe_allow_cards=True)
-
+        # POPRAWIONE: Zmieniono unsafe_allow_cards na unsafe_allow_html
+        st.markdown("<span style='color: #ef4444; font-weight: bold;'>Wynik: NEGATYWNY.</span> Prąd zwarcia jest **ZA MAŁY**, aby wyzwolić człon zwarciowy! Zagrożenie porażeniowe. Zwiększ przekrój miedzi, zwiększ liczbę kabli (N) lub wybierz bezpiecznik o czulszej charakterystyce.", unsafe_allow_html=True)
 
 # 4. OPINIA AI
 st.header("3. Raport inżynierski Asystenta AI")
