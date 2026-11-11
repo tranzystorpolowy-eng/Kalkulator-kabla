@@ -174,7 +174,8 @@ else:
     Ik1_ost = 230 / Z_petli_ost
     swz_spelniony = Ik1_ost >= Ia
 
-# --- NOWOCZESNA DYNAMICZNA WIZUALIZACJA (DOL / FALOWNIK) ---
+
+# --- NOWOCZESNA DYNAMICZNA WIZUALIZACJA (DOL / FALOWNIK) - POPRAWIONA ---
 st.header("🖼️ Graficzny schemat instalacji zasilającej")
 
 oznaczenie_kabla = "YKY" if "Miedź" in material else "YAKY"
@@ -184,7 +185,15 @@ predkosc_animacji = max(0.3, min(2.0, 20 / (I_znamionowy + 1)))
 
 # Generowanie kodu HTML w zależności od wybranego sposobu zasilania
 if "falownika" in methoda_zasilania:
-    # WIZUALIZACJA Z FALOWNIKIEM (Zasilanie -> Przewód -> FALOWNIK -> Silnik)
+    # Uproszczony dobór kabla zasilającego falownik (od sieci do falownika) dla celów wizualnych
+    przekroj_sieciowy = 1.5
+    for s_test in [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120, 150, 185, 240]:
+        if s_test >= dobrany_przekroj * 0.8: # Prąd wejściowy falownika jest zbliżony, często stopień mniejszy lub taki sam
+            przekroj_sieciowy = s_test
+            break
+    format_kabla_sieciowego = f"{oznaczenie_kabla} {zyly}{przekroj_sieciowy} mm²"
+
+    # WIZUALIZACJA Z FALOWNIKIEM
     html_vis = f"""
     <div style="background: #ffffff; padding: 25px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; font-family: sans-serif; color: #1e293b; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow-x: auto;">
         
@@ -200,38 +209,34 @@ if "falownika" in methoda_zasilania:
             <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Bezpieczniki {In_bezp}A {charakterystyka}</div>
         </div>
 
-        <!-- PRZEWÓD ZASILAJĄCY FUSE -> VSD -->
+        <!-- PRZEWÓD ZASILAJĄCY ROZDZIELNICA -> FALOWNIK -->
         <div style="flex-grow: 1; margin: 0 10px; text-align: center; min-width: 80px;">
-            <div style="font-size: 10px; font-weight: 700; background: #f1f5f9; color: #b45309; padding: 3px 8px; border-radius: 10px; display: inline-block; margin-bottom: 4px;">Kabel zasilający</div>
-            <svg width="100%" height="12"><rect x="0" y="2" width="100%" height="8" rx="4" fill="#334155"/><line x1="0" y1="6" x2="100%" y2="6" stroke="#fbbf24" stroke-width="3" stroke-dasharray="6, 10" style="animation: flow {predkosc_animacji:.2f}s linear infinite;" /></svg>
-            <div style="font-size: 9px; color: #64748b; margin-top: 3px;">{format_kabla}</div>
+            <div style="font-size: 10px; font-weight: 700; background: #f1f5f9; color: #475569; padding: 3px 8px; border-radius: 10px; display: inline-block; margin-bottom: 4px;">Kabel zasilający VSD</div>
+            <svg width="100%" height="12"><rect x="0" y="2" width="100%" height="8" rx="4" fill="#475569"/><line x1="0" y1="6" x2="100%" y2="6" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="6, 10" style="animation: flow {predkosc_animacji:.2f}s linear infinite;" /></svg>
+            <div style="font-size: 9px; color: #64748b; margin-top: 3px;">{format_kabla_sieciowego}</div>
         </div>
 
-        <!-- ELEMENT 2: NOWY MODUŁ FALOWNIKA ABB -->
+        <!-- ELEMENT 2: MODUŁ FALOWNIKA ABB -->
         <div style="background: #fffbeb; border: 2px solid #fde68a; border-radius: 10px; padding: 12px; width: 150px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); flex-shrink: 0;">
             <svg width="55" height="75" viewBox="0 0 80 120" style="display: block; margin: 0 auto 5px auto;">
-                <!-- Obudowa falownika przemysłowego -->
                 <rect x="10" y="5" width="60" height="110" rx="4" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"/>
                 <rect x="10" y="5" width="60" height="20" fill="#334155" rx="2"/>
-                <!-- Wyświetlacz panelu sterowania -->
                 <rect x="25" y="30" width="30" height="25" fill="#0f172a" rx="2" stroke="#475569"/>
                 <text x="40" y="44" fill="#22c55e" font-size="10" font-family="monospace" text-anchor="middle">50.0Hz</text>
                 <text x="40" y="52" fill="#38bdf8" font-size="8" font-family="monospace" text-anchor="middle">{I_znamionowy:.1f}A</text>
-                <!-- Marka / Paski ozdobne ABB -->
                 <rect x="20" y="10" width="40" height="4" fill="#ff0000"/> 
-                <!-- Wentylator chłodzący dolny -->
                 <line x1="20" y1="105" x2="60" y2="105" stroke="#94a3b8" stroke-width="3" stroke-dasharray="2, 2"/>
             </svg>
             <div style="font-size: 11px; font-weight: 700; color: #b45309;">Przemiennik VSD</div>
             <div style="font-size: 10px; font-weight: bold; color: #1e293b; margin-top: 2px;">ABB {model_falownika}</div>
-            <div style="font-size: 9px; color: #78350f;">Sterowanie skalarne/DTC</div>
         </div>
 
-        <!-- PRZEWÓD SILNIKOWY VSD -> MOTOR -->
-        <div style="flex-grow: 1; margin: 0 10px; text-align: center; min-width: 80px;">
-            <div style="font-size: 10px; font-weight: 700; background: #eff6ff; color: #1d4ed8; padding: 3px 8px; border-radius: 10px; display: inline-block; margin-bottom: 4px;">Kabel silnikowy ekranowany</div>
-            <svg width="100%" height="12"><rect x="0" y="2" width="100%" height="8" rx="4" fill="#1e40af"/><line x1="0" y1="6" x2="100%" y2="6" stroke="#38bdf8" stroke-width="3" stroke-dasharray="6, 10" style="animation: flow {predkosc_animacji:.2f}s linear infinite;" /></svg>
-            <div style="font-size: 9px; color: #1e40af; margin-top: 3px;">EMC Symetryczny</div>
+        <!-- PRZEWÓD SILNIKOWY FALOWNIK -> SILNIK (TUTAJ TRAFIA TWÓJ DOBRANY KABEL) -->
+        <div style="flex-grow: 1; margin: 0 10px; text-align: center; min-width: 90px;">
+            <div style="font-size: 10px; font-weight: 700; background: #fff7ed; color: #c2410c; padding: 3px 8px; border-radius: 10px; display: inline-block; margin-bottom: 4px;">Kabel silnikowy (Dobór)</div>
+            <svg width="100%" height="12"><rect x="0" y="2" width="100%" height="8" rx="4" fill="#334155"/><line x1="0" y1="6" x2="100%" y2="6" stroke="#fbbf24" stroke-width="3" stroke-dasharray="6, 10" style="animation: flow {predkosc_animacji:.2f}s linear infinite;" /></svg>
+            <div style="font-size: 10px; font-weight: bold; color: #b45309; margin-top: 3px;">{format_kabla}</div>
+            <div style="font-size: 9px; color: #9a3412;">Długość: {dlugosc}m | Ekranowany EMC</div>
         </div>
 
         <!-- ELEMENT 3: SILNIK -->
@@ -240,20 +245,19 @@ if "falownika" in methoda_zasilania:
                 <rect x="20" y="20" width="55" height="50" rx="6" fill="#0284c7" stroke="#0369a1" stroke-width="2"/>
                 <line x1="30" y1="20" x2="30" y2="70" stroke="#0369a1" stroke-width="1"/>
                 <line x1="45" y1="20" x2="45" y2="70" stroke="#0369a1" stroke-width="1"/>
-                <rect x="35" y="8" width="25" height="12" fill="#0ea5e9" rx="1"/>
-                <rect x="75" y="40" width="15" height="10" fill="#94a3b8"/>
-                <rect x="5" y="25" width="15" height="40" rx="3" fill="#475569"/>
+                <rect x="35" y="8" width="25" height="12" fill="#0ea5e9"/><rect x="75" y="40" width="15" height="10" fill="#94a3b8"/><rect x="5" y="25" width="15" height="40" rx="3" fill="#475569"/>
             </svg>
             <div style="font-size: 11px; font-weight: 700; color: #0369a1;">Silnik Klatkowy</div>
             <div style="font-size: 11px; font-weight: bold; color: #0f172a;">{P} kW</div>
-            <div style="font-size: 10px; background: #e0f2fe; color: #0369a1; padding: 1px 4px; border-radius: 4px; display: inline-block; margin-top: 2px; font-weight: bold;">$I_{{n}}$: {I_znamionowy:.1f} A</div>
+            <!-- POPRAWIONE OZNACZENIE PRĄDU ZNAMIONOWEGO -->
+            <div style="font-size: 10px; background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 4px; font-weight: bold;">In: {I_znamionowy:.1f} A</div>
         </div>
         <style> @keyframes flow {{ 0% {{ stroke-dashoffset: 0; }} 100% {{ stroke-dashoffset: -20; }} }} </style>
     </div>
     <br>
     """
 else:
-    # WIZUALIZACJA DOL (Stary sprawdzony układ)
+    # WIZUALIZACJA DOL (Niezmieniony układ bezpośredni sieciowy)
     html_vis = f"""
     <div style="background: #ffffff; padding: 30px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; font-family: sans-serif; color: #1e293b; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
         <div style="background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 10px; padding: 15px; width: 150px; text-align: center;">
@@ -279,12 +283,7 @@ else:
                 <rect x="20" y="20" width="55" height="50" rx="6" fill="#0284c7" stroke="#0369a1" stroke-width="2"/><line x1="30" y1="20" x2="30" y2="70" stroke="#0369a1" stroke-width="1"/><rect x="35" y="8" width="25" height="12" fill="#0ea5e9"/><rect x="75" y="40" width="15" height="10" fill="#94a3b8"/><rect x="5" y="25" width="15" height="40" rx="3" fill="#475569"/>
             </svg>
             <div style="font-size: 13px; font-weight: 700; color: #0369a1;">Silnik {P} kW</div>
-            <div style="font-size: 11px; background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 4px; font-weight: bold;">In: {I_znamionowy:.1f} A</div>
-        </div>
-        <style> @keyframes flow {{ 0% {{ stroke-dashoffset: 0; }} 100% {{ stroke-dashoffset: -20; }} }} </style>
-    </div>
-    <br>
-    """
+
 
 # Renderowanie kodu HTML na stronie WWW ze stabilną wysokością
 st.components.v1.html(html_vis, height=240)
