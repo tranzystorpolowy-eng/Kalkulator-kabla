@@ -171,7 +171,7 @@ res_col1, res_col2, res_col3 = st.columns(3)
 
 with res_col1:
     st.info("📦 Dobór Aparatu Ochronnego")
-    st.markdown(f"Typ urządzenia: **{typ_zabezpieczenia.split()[0]}**")
+    st.markdown(f"Typ urządzenia: **{typ_zabezpieczenia}**")
     st.markdown(f"Znamionowy prąd bezpiecznika ($I_n$): **{In_bezp} A**")
     st.markdown(f"Próg zadziałania magnetycznego/topnienia ($I_a$): **{Ia:.0f} A**")
 
@@ -182,11 +182,11 @@ with res_col2:
 
 with res_col3:
     if swz_spelniony:
-st.success("✅ Warunek SWZ SPEŁNIONY!")
-st.markdown(f"Prąd zwarcia na końcu kabla (${Ik1_ost:.1f}\text{{ A}}$) jest wystarczający do pewnego wyzwolenia ochrony w czasie poniżej 0.4s. Aparat bezpiecznie odłączy zasilanie.")
-else:
-st.error("❌ Warunek SWZ NIE SPEŁNIONY!")
-st.markdown(f"Prąd zwarcia (${Ik1_ost:.1f}\text{{ A}}$) jest ZA MAŁY, aby wyzwolić człon zwarciowy (${Ia:.0f}\text{{ A}}$)! Zwiększ przekrój, zwiększ liczbę kabli (N), obniż impedancję źródła Z_sieci lub wybierz czulszy wyłącznik.")
+        st.success("✅ Warunek SWZ SPEŁNIONY!")
+        st.markdown(f"Prąd zwarcia na końcu kabla (${Ik1_ost:.1f}\\text{{ A}}$) jest wystarczający do pewnego wyzwolenia ochrony w czasie poniżej 0.4s. Aparat bezpiecznie odłączy zasilanie.")
+    else:
+        st.error("❌ Warunek SWZ NIE SPEŁNIONY!")
+        st.markdown(f"Prąd zwarcia (${Ik1_ost:.1f}\\text{{ A}}$) jest **ZA MAŁY**, aby wyzwolić człon zwarciowy (${Ia:.0f}\\text{{ A}}$)! **Zwiększ przekrój, zwiększ liczbę kabli (N), obniż impedancję źródła Z_sieci lub wybierz czulszy wyłącznik.**")
 
 #4. OPINIA AI
 
