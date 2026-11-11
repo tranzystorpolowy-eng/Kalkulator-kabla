@@ -33,6 +33,10 @@ with col2:
     spadek_max = st.number_input("Dopuszczalny spadek napięcia (%):", min_value=0.5, max_value=10.0, value=3.0, step=0.5)
     material = st.radio("Materiał żyły:", ["Miedź (Cu)", "Aluminium (Al)"])
     temperatura = st.slider("Temperatura otoczenia (°C):", min_value=10, max_value=60, value=30, step=5)
+    st.markdown("---")
+    st.subheader("Konfiguracja linii")
+    N = st.selectbox("Liczba kabli połączonych równolegle na fazę (N):", [1, 2, 3], index=0)
+
     
     st.markdown("---")
     st.subheader("Parametry sieci i zabezpieczeń")
@@ -83,16 +87,17 @@ else: # D
 # --- DODANIE WARUNKU OBCIĄŻALNOŚCI DŁUGOTRWAŁEJ (Uproszczone tabele normy PN-HD 60364-5-52 dla Cu/PVC) ---
 # Słownik z przybliżonymi dopuszczalnymi prądami dla przewodów miedzianych (w zależności od przekroju)
 # Dla uproszczenia bierzemy bezpieczne wartości średnie dla najpopularniejszych metod ułożenia
+# --- ZAAWANSOWANE OBLICZENIA WIELOTOROWE (Dla N kabli równolegle) ---
+
+# Słownik obciążalności bazowej Cu dla jednego kabla
 obciazalnosc_Cu = {
     1.5: 14, 2.5: 20, 4: 27, 6: 36, 10: 50, 16: 68, 25: 89, 
     35: 110, 50: 134, 70: 171, 95: 207, 120: 239
 }
-
-# Dla aluminium prądy są mniejsze (mnożnik ok. 0.78)
 obciazalnosc_Al = {k: fill_val * 0.78 for k, fill_val in obciazalnosc_Cu.items()}
 tabele_Iz = obciazalnosc_Cu if "Miedź" in material else obciazalnosc_Al
 
-# Współczynnik poprawkowy ze względu na temperaturę otoczenia (baza 30°C)
+# 1. Współczynnik poprawkowy temperatury (baza 30°C)
 if temperatura <= 30:
     f_temp = 1.0
 elif temperatura <= 40:
@@ -102,44 +107,55 @@ elif temperatura <= 50:
 else:
     f_temp = 0.50
 
-# Iteracyjny dobór przekroju kabla z uwzględnieniem CZTERECH warunków: Spadek, Ciepło zwarcie, SWZ, Obciążalność długotrwała
-standardowe_przekroje = [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120]
+# 2. Współczynnik poprawkowy grupowania kabli obok siebie (wg normy)
+# Jeśli kabel jest jeden, brak redukcji. Jeśli więcej - obniżamy prąd ze wzgl. na wzajemne grzanie.
+f_grup = 1.0 if N == 1 else (0.80 if N == 2 else 0.70)
+
+# Rozbudowany szereg przekrojów do 240 mm2 dla przemysłu
+standardowe_przekroje = [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120, 150, 185, 240]
 dobrany_przekroj = standardowe_przekroje[-1]
+warunki_spelnione = False
 
 for s in standardowe_przekroje:
-    # 1. Warunek spadku napięcia
+    # Całkowity przekrój fazy (N kabli o przekroju s)
+    S_calkowity = s * N
+    
+    # 1. Warunek spadku napięcia (bazuje na całkowitym przekroju)
     if U == 400:
         S_min_spadek = (100 * P * 1000 * dlugosc) / (gamma * spadek_max * (U ** 2))
     else:
         S_min_spadek = (200 * P * 1000 * dlugosc) / (gamma * spadek_max * (U ** 2))
         
-    # 2. Warunek wytrzymałości cieplnej przy zwarciu 3f
+    # 2. Warunek wytrzymałości cieplnej zwarciowej przy zwarciu 3f
     k_coeff = 115 if "Miedź" in material else 76
     if "XLPE" in izolacja:
         k_coeff = 143 if "Miedź" in material else 94
     S_min_cieplne = (Ik * math.sqrt(t_zwarcie)) / k_coeff
     
-    # 3. Warunek SWZ (Zwarcie 1-fazowe na końcu kabla)
-    R_kabla = 2 * (rho * 1.5 * dlugosc) / s 
-    X_kabla = 2 * (0.08 * dlugosc / 1000) 
+    # 3. Warunek SWZ (Rezystancja i reaktancja wypadkowa linii maleje N-krotnie)
+    R_kabla = 2 * (rho * 1.5 * dlugosc) / S_calkowity
+    X_kabla = 2 * (0.08 * dlugosc / 1000) / N
     Z_pętli = math.sqrt((Z_sieci + R_kabla)**2 + X_kabla**2)
     Ik1_koniec = 230 / Z_pętli 
     
-    # 4. NOWE: Warunek obciążalności długotrwałej skorygowany o temperaturę (Iz >= In_silnika)
-    Iz_realne = tabele_Iz[s] * f_temp
+    # 4. Warunek obciążalności długotrwałej dla linii wielotorowej
+    # Iz_linii = N * Iz_pojedynczego_kabla * f_temp * f_grup
+    Iz_realne_linii = N * tabele_Iz.get(s, 300) * f_temp * f_grup
     
-    # Kabel musi spełniać WSZYSTKIE cztery warunki
-    if s >= S_min_spadek and s >= S_min_cieplne and Ik1_koniec >= Ia and Iz_realne >= I_znamionowy:
+    # Sprawdzamy czy pojedynczy przekrój 's' powielony N-razy spełnia kryteria
+    if S_calkowity >= S_min_spadek and S_calkowity >= S_min_cieplne and Ik1_koniec >= Ia and Iz_realne_linii >= I_znamionowy:
         dobrany_przekroj = s
+        warunki_spelnione = True
         break
 
-# Ponowne przeliczenie parametrów ostatecznych dla wybranego przekroju do wyświetlenia
-R_kabla_ost = 2 * (rho * 1.5 * dlugosc) / dobrany_przekroj
-X_kabla_ost = 2 * (0.08 * dlugosc / 1000)
+# Parametry ostateczne do wyświetlenia na stronie
+S_ost_calkowity = dobrany_przekroj * N
+R_kabla_ost = 2 * (rho * 1.5 * dlugosc) / S_ost_calkowity
+X_kabla_ost = 2 * (0.08 * dlugosc / 1000) / N
 Z_petli_ost = math.sqrt((Z_sieci + R_kabla_ost)**2 + X_kabla_ost**2)
 Ik1_ost = 230 / Z_petli_ost
 swz_spelniony = Ik1_ost >= Ia
-Iz_ost = tabele_Iz[dobrany_przekroj] * f_temp
+Iz_ost = N * tabele_Iz.get(dobrany_przekroj, 300) * f_temp * f_grup
 
 
 # --- ANIMACJA I PODGLĄD GRAFICZNY ---
@@ -166,8 +182,13 @@ html_vis = f"""
     </div>
 
     <div style="flex-grow: 1; margin: 0 20px; text-align: center;">
+       
+        # Zastąp stary blok tym opisem:
         <div style="font-size: 12px; background: #334155; padding: 4px 10px; border-radius: 20px; display: inline-block; margin-bottom: 5px;">
-            <b style="color: #f59e0b;">{oznaczenie_kabla} {zyly}{dobrany_przekroj} mm²</b> ({dlugosc}m)
+            <b style="color: #f59e0b;">{f"{N}x(" if N > 1 else ""}{oznaczenie_kabla} {zyly}{dobrany_przekroj} mm²{")" if N > 1 else ""}</b> ({dlugosc}m)
+        </div>
+
+            
         </div>
         <svg width="100%" height="16">
             <rect x="0" y="2" width="100%" height="12" rx="6" fill="#0f172a"/>
