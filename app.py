@@ -189,7 +189,7 @@ html_vis = f"""
         </div>
 
             
-        </div>
+       
         <svg width="100%" height="16">
             <rect x="0" y="2" width="100%" height="12" rx="6" fill="#0f172a"/>
             <line x1="0" y1="8" x2="100%" y2="8" stroke="#eab308" stroke-width="4" stroke-dasharray="10, 15" style="animation: flow {predkosc_animacji:.2f}s linear infinite;" />
