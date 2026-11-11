@@ -115,6 +115,7 @@ Ik1_ost = 230 / Z_petli_ost
 swz_spelniony = Ik1_ost >= Ia
 
 # --- ANIMACJA I PODGLĄD GRAFICZNY ---
+# --- ANIMACJA I PODGLĄD GRAFICZNY ---
 st.header("🖼️ Interaktywny podgląd instalacji i SWZ (Na żywo)")
 oznaczenie_kabla = "YKY" if "Miedź" in material else "YAKY"
 zyly = "3x" if U == 230 else "4x"
@@ -122,13 +123,14 @@ zyly = "3x" if U == 230 else "4x"
 # Prędkość prądu w animacji zależna od prądu znamionowego silnika
 predkosc_animacji = max(0.2, min(2.0, 15 / (I_znamionowy + 1)))
 
+# POPRAWIONE: Zmieniono {characterystyka} na {charakterystyka} w kodzie HTML poniżej
 html_vis = f"""
 <div style="background: #1e293b; padding: 25px; border-radius: 12px; display: flex; justify-content: space-around; align-items: center; font-family: Arial; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
     <div style="text-align: center; width: 140px;">
         <svg width="70" height="100" viewBox="0 0 80 120">
             <rect x="5" y="5" width="70" height="110" rx="4" fill="#3f4756" stroke="#64748b" stroke-width="3"/>
             <rect x="15" y="15" width="50" height="30" fill="#0f172a"/>
-            <text x="40" y="35" fill="#38bdf8" font-size="12" font-weight="bold" text-anchor="middle">{characterystyka}{In_bezp}A</text>
+            <text x="40" y="35" fill="#38bdf8" font-size="12" font-weight="bold" text-anchor="middle">{charakterystyka}{In_bezp}A</text>
             <circle cx="40" cy="70" r="10" fill="#22c55e" />
         </svg>
         <div style="font-size: 12px; font-weight: bold; margin-top: 5px; color: #94a3b8;">Zabezpieczenie</div>
@@ -159,6 +161,7 @@ html_vis = f"""
     </div>
 </div>
 """
+
 st.components.v1.html(html_vis, height=180)
 
 # 3. WYNIKI TECHNICZNE W KAFELKACH
