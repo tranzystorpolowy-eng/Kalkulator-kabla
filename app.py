@@ -189,11 +189,24 @@ if st.button("Generuj analizę ekspercką"):
     if "OPENAI_API_KEY" in st.secrets:
         client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
         with st.spinner("AI analizuje pętlę zwarcia i warunki SWZ..."):
-            prompt = f"""
-            Jesteś inżynierem elektrykiem. Użytkownik dobrał przewód dla silnika {P}kW ({U}V).
-            Wybrane zabezpieczenie to {characterystyka}{In_bezp}A (wymagany prąd wyłączenia Ia = {Ia}A).
-            Długość kabla: {dlugosc}m, materiał: {material}. Dobrany przekrój: {dobrany_przekroj}mm2.
-            Wyliczony prąd zwarcia jednofazowego na końcu linii wynosi {Ik1_ost:.1f}A.
-            Status SWZ: {"SPEŁNIONY" if swz_spelniony else "NIE SPEŁNIONY"}.
             
-            Napisz zwięzłą opinię ekspercką w 3-4 punktach, używając żargonu elektryków:
+            # Bezpiecznie sformatowany prompt bez długich linii
+            prompt = (
+                f"Jesteś inżynierem elektrykiem. Użytkownik dobrał przewód dla silnika {P}kW ({U}V).\n"
+                f"Wybrane zabezpieczenie to {characterystyka}{In_bezp}A (wymagany prąd wyłączenia Ia = {Ia}A).\n"
+                f"Długość kabla: {dlugosc}m, materiał: {material}. Dobrany przekrój: {dobrany_przekroj}mm2.\n"
+                f"Wyliczony prąd zwarcia jednofazowego na końcu linii wynosi {Ik1_ost:.1f}A.\n"
+                f"Status SWZ: {'SPEŁNIONY' if swz_spelniony else 'NIE SPEŁNIONY'}.\n\n"
+                f"Napisz zwięzłą opinię ekspercką w 3-4 punktach, używając żargonu elektryków:\n"
+                f"1. Skomentuj wynik SWZ. Jeśli warunek nie jest spełniony, wyjaśnij z czego to wynika.\n"
+                f"2. Odnieś się do doboru prądu znamionowego wyłącznika ({In_bezp}A) pod kątem rozruchu.\n"
+                f"3. Podaj jedną praktyczną wskazówkę montażową dla tych warunków ułożenia ({ulozenie})."
+            )
+            
+            response = client.chat.completions.create(
+                model="gpt-4o-mini", 
+                messages=[{"role": "user", "content": prompt}]
+            )
+            st.write(response.choices.message.content)
+    else:
+        st.warning("Brak klucza API OpenAI w Secrets – obliczenia inżynierskie i grafika działają poprawnie bez klucza.")
