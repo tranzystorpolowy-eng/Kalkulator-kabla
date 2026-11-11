@@ -159,7 +159,6 @@ Iz_ost = N * tabele_Iz.get(dobrany_przekroj, 300) * f_temp * f_grup
 
 
 # --- ANIMACJA I PODGLĄD GRAFICZNY ---
-# --- ANIMACJA I PODGLĄD GRAFICZNY ---
 st.header("🖼️ Interaktywny podgląd instalacji i SWZ (Na żywo)")
 oznaczenie_kabla = "YKY" if "Miedź" in material else "YAKY"
 zyly = "3x" if U == 230 else "4x"
@@ -183,7 +182,6 @@ html_vis = f"""
 
     <div style="flex-grow: 1; margin: 0 20px; text-align: center;">
        
-        # Zastąp stary blok tym opisem:
         <div style="font-size: 12px; background: #334155; padding: 4px 10px; border-radius: 20px; display: inline-block; margin-bottom: 5px;">
             <b style="color: #f59e0b;">{f"{N}x(" if N > 1 else ""}{oznaczenie_kabla} {zyly}{dobrany_przekroj} mm²{")" if N > 1 else ""}</b> ({dlugosc}m)
         </div>
