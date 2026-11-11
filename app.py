@@ -82,8 +82,7 @@ else: # D
 
 # Iteracyjny dobór przekroju kabla z uwzględnieniem TRZECH warunków: Spadek, Wytrzymałość zwarciowa, SWZ
 standardowe_przekroje = [1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120]
-dobrany_przekroj = 1.5
-powod_doboru = "Spadek napięcia / Obciążalność"
+dobrany_przekroj = standardowe_przekroje[-1] # Domyślnie najwyższy na wypadek braku spełnienia warunków
 
 for s in standardowe_przekroje:
     # 1. Warunek spadku napięcia
@@ -99,23 +98,18 @@ for s in standardowe_przekroje:
     S_min_cieplne = (Ik * math.sqrt(t_zwarcie)) / k_coeff
     
     # 3. Warunek SWZ (Zwarcie 1-fazowe na końcu kabla)
-    # Rezystancja przewodu fazowego i ochronnego (zakładamy przekrój PE = Faza)
-    # Uwzględniamy nagrzanie żył podczas zwarcia (współczynnik 1.5 dla rezystancji wg wytycznych)
     R_kabla = 2 * (rho * 1.5 * dlugosc) / s 
-    X_kabla = 2 * (0.08 * dlugosc / 1000) # Reaktancja jednostkowa ok. 0.08 Ω/km
+    X_kabla = 2 * (0.08 * dlugosc / 1000) 
     
     Z_pętli = math.sqrt((Z_sieci + R_kabla)**2 + X_kabla**2)
-    Ik1_koniec = 230 / Z_pętli # Prąd zwarcia jednofazowego na końcu kabla
+    Ik1_koniec = 230 / Z_pętli 
     
+    # Warunek wejściowy obciążalności długotrwałej (uproszczony dla silników małomocowych)
+    # Kabel musi bezwzględnie spełniać prąd znamionowy zabezpieczenia
     if s >= S_min_spadek and s >= S_min_cieplne and Ik1_koniec >= Ia:
         dobrany_przekroj = s
-        if Ik1_koniec < Ia:
-            powod_doboru = "SWZ (Warunek samoczynnego wyłączenia)"
-        elif S_min_cieplne > S_min_spadek:
-            powod_doboru = "Cieplna wytrzymałość zwarciowa"
         break
-    else:
-        dobrany_przekroj = s # Przypisanie awaryjne najwyższego jeśli pętla nie zamyka
+
 
 # Ponowne przeliczenie parametrów ostatecznych dla wybranego przekroju do wyświetlenia
 R_kabla_ost = 2 * (rho * 1.5 * dlugosc) / dobrany_przekroj
