@@ -9,8 +9,8 @@ st.title("⚡ Profesjonalny Przemysłowy Kalkulator Doboru Przewodu i SWZ")
 st.header("1. Dane silnika i instalacji")
 
 col1, col2 = st.columns(2)
-with col1:
 
+with col1:
     P = st.number_input("Moc znamionowa silnika P (kW):", min_value=0.1, value=7.5, step=0.1)
     U = st.selectbox("Napięcie zasilania U (V):", [230, 400], index=1)
     cos_fi = st.number_input("Współczynnik mocy (cos φ):", min_value=0.5, max_value=1.0, value=0.85, step=0.01)
@@ -28,8 +28,8 @@ with col1:
         index=2
     )
     izolacja = st.radio("Typ izolacji kabla:", ["PVC (polwinit)", "XLPE / EPR (polietylen sieciowany)"])
-
-st.markdown("---")
+    
+    st.markdown("---")
     methoda_zasilania = st.radio("Metoda zasilania silnika:", ["Bezpośrednie z sieci (DOL)", "Zasilanie z falownika (VSD / ABB ACS880)"])
 
 with col2:
