@@ -167,6 +167,16 @@ st.components.v1.html(html_vis, height=240)
 
 # 3. WYNIKI TECHNICZNE W KAFELKACH
 st.header("2. Wyniki analizy technicznej")
+
+# Ostrzeżenie inżynierskie dla bardzo dużych prądów zwarciowych (np. przy sekcji głównej MCCB 2500A)
+if Ik > 15000:
+    st.warning(
+        "⚠️ **Wysoki prąd zwarcia źródła!** Wpisany prąd zwarcia przekracza 15 kA (charakterystyczny dla dużych rozdzielnic głównych, np. z aparatem 2500A). "
+        "Jeśli linia odpływowa silnika jest dobezpieczona bezpiecznikami topikowymi (np. wkładką NH gG) lub wyłącznikiem silnikowym/kompaktowym z funkcją ograniczania, "
+        "w polu 'Spodziewany prąd zwarcia Ik' należy wpisać wartość **prądu ograniczonego (odciętego)** pobraną z katalogu producenta aparatu. "
+        "Zapobiegnie to drastycznemu, sztucznemu przewymiarowaniu przekrojów kabli dla mniejszych silników."
+    )
+
 res_col1, res_col2, res_col3 = st.columns(3)
 
 with res_col1:
@@ -183,12 +193,15 @@ with res_col2:
 with res_col3:
     if swz_spelniony:
         st.success("✅ Warunek SWZ SPEŁNIONY!")
-        st.markdown(f"Prąd zwarcia na końcu kabla (${Ik1_ost:.1f}\\text{{ A}}$) jest wystarczający do pewnego wyzwolenia ochrony w czasie poniżej 0.4s. Aparat bezpiecznie odłączy zasilanie.")
+        st.markdown("**Wzór sprawdzający normy PN-HD 60364-4-41:**")
+        st.latex(rf"I_{{k1}} \ge I_a \implies {Ik1_ost:.1f}\text{{ A}} \ge {Ia:.0f}\text{{ A}}")
+        st.markdown("<span style='color: #22c55e; font-weight: bold;'>Wynik: POZYTYWNY.</span> Prąd zwarcia na końcu kabla jest wystarczający do natychmiastowego wyzwolenia ochrony w czasie t ≤ 0.4s.", unsafe_allow_cards=True)
     else:
         st.error("❌ Warunek SWZ NIE SPEŁNIONY!")
-        st.markdown(f"Prąd zwarcia (${Ik1_ost:.1f}\\text{{ A}}$) jest **ZA MAŁY**, aby wyzwolić człon zwarciowy (${Ia:.0f}\\text{{ A}}$)! **Zwiększ przekrój, zwiększ liczbę kabli (N), obniż impedancję źródła Z_sieci lub wybierz czulszy wyłącznik.**")
+        st.markdown("**Wzór sprawdzający normy PN-HD 60364-4-41:**")
+        st.latex(rf"I_{{k1}} \ge I_a \implies {Ik1_ost:.1f}\text{{ A}} \not\ge {Ia:.0f}\text{{ A}}")
+        st.markdown("<span style='color: #ef4444; font-weight: bold;'>Wynik: NEGATYWNY.</span> Prąd zwarcia jest **ZA MAŁY**, aby wyzwolić człon zwarciowy! Zagrożenie porażeniowe. Zwiększ przekrój miedzi, zwiększ liczbę kabli (N) lub wybierz bezpiecznik o czulszej charakterystyce.", unsafe_allow_cards=True)
 
-#4. OPINIA AI
 
 # 4. OPINIA AI
 st.header("3. Raport inżynierski Asystenta AI")
