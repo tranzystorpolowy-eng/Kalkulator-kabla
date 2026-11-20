@@ -213,7 +213,6 @@ else:
         
         Iz_realne_linii = N * tabele_Iz[s] * f_temp * f_grup
         
-        # Warunek przeciążeniowy wg normy: Ib <= In <= Iz
         if S_calkowity >= S_min_spadek and S_calkowity >= S_min_cieplne and Ik1_koniec >= Ia and Iz_realne_linii >= In_bezp:
             dobrany_przekroj = s
             break
