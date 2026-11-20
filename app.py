@@ -337,7 +337,7 @@ with res_col1:
 
 with res_col2:
     st.info("📉 Parametry zwarciowe i spadek ΔU")
-    st.markdown(f"Spadek napięcia $\Delta U$: **{spadek_rzeczywisty:.2f}%** (dopuszczalny: {spadek_max:.1f}%)")
+    st.markdown(f"Spadek napięcia $\\Delta U$: **{spadek_rzeczywisty:.2f}%** (dopuszczalny: {spadek_max:.1f}%)")
     st.markdown(f"Impedancja pętli zwarcia $Z_s$: **{Z_petli_ost:.3f} Ω**")
     st.markdown(f"Wyliczony prąd zwarcia 1-fazowego $I_{{k1}}$: **{Ik1_ost:.1f} A**")
 
@@ -345,13 +345,12 @@ with res_col3:
     if swz_spelniony:
         st.success("✅ Warunek SWZ SPEŁNIONY!")
         st.markdown("**Wzór sprawdzający normy PN-HD 60364-4-41:**")
-        st.latex(rf"I_{{k1}} \ge I_a \implies {Ik1_ost:.1f}	ext{{ A}} \ge {Ia:.0f}	ext{{ A}}")
+        st.latex(f"I_{{k1}} \\ge I_a \\implies {Ik1_ost:.1f}\\text{{ A}} \\ge {Ia:.0f}\\text{{ A}}")
         st.markdown("<span style='color: #22c55e; font-weight: bold;'>Wynik: POZYTYWNY.</span> Prąd zwarcia na końcu kabla jest wystarczający do natychmiastowego wyzwolenia ochrony w czasie t ≤ 0.4s.", unsafe_allow_html=True)
     else:
         st.error("❌ Warunek SWZ NIE SPEŁNIONY!")
         st.markdown("**Wzór sprawdzający normy PN-HD 60364-4-41:**")
-        st.latex(rf"I_{{k1}} \ge I_a \implies {Ik1_ost:.1f}	ext{{ A}} 
-ot\ge {Ia:.0f}	ext{{ A}}")
+        st.latex(f"I_{{k1}} \\ge I_a \\implies {Ik1_ost:.1f}\\text{{ A}} \\not\\ge {Ia:.0f}\\text{{ A}}")
         st.markdown("<span style='color: #ef4444; font-weight: bold;'>Wynik: NEGATYWNY.</span> Prąd zwarcia jest **ZA MAŁY**, aby wyzwolić człon zwarciowy! Zagrożenie porażeniowe. Zwiększ przekrój miedzi, zwiększ liczbę kabli (N) lub wybierz bezpiecznik o czulszej charakterystyce.", unsafe_allow_html=True)
 
 # 4. OPINIA AI
@@ -361,25 +360,15 @@ if st.button("Generuj analizę ekspercką"):
         client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
         with st.spinner("AI analizuje pętlę zwarcia i warunki SWZ..."):
             prompt = (
-                f"Jesteś inżynierem elektrykiem. Użytkownik dobrał przewód dla silnika {P}kW ({U}V), prąd znamionowy Ib={I_znamionowy:.1f}A.
-"
-                f"Sposób ułożenia: {ulozenie}, izolacja: {izolacja}, temperatura: {temperatura}°C.
-"
-                f"Zabezpieczenie to {typ_zabezpieczenia} o prądzie {In_bezp}A (wymagany prąd wyłączenia Ia = {Ia}A).
-"
-                f"Długość kabla: {dlugosc}m, materiał: {material}, ułożony równolegle w liczbie N={N} sztuk. Dobrany przekrój pojedynczy: {dobrany_przekroj}mm2 (obciążalność Iz={Iz_ost:.1f}A).
-"
-                f"Wyliczony prąd zwarcia jednofazowego na końcu linii wynosi {Ik1_ost:.1f}A.
-"
-                f"Status SWZ: {'SPEŁNIONY' if swz_spelniony else 'NIE SPEŁNIONY'}.
-
-"
-                f"Napisz zwięzłą opinię ekspercką w 3-4 punktach, używając żargonu elektryków:
-"
-                f"1. Skomentuj wynik SWZ w kontekście wybranego aparatu ({typ_zabezpieczenia}).
-"
-                f"2. Odnieś się do decyzji o ułożeniu linii wielotorowej N={N} oraz doboru przekroju dla sposobu ułożenia {kod_ulozenia}.
-"
+                f"Jesteś inżynierem elektrykiem. Użytkownik dobrał przewód dla silnika {P}kW ({U}V), prąd znamionowy Ib={I_znamionowy:.1f}A.\n"
+                f"Sposób ułożenia: {ulozenie}, izolacja: {izolacja}, temperatura: {temperatura}°C.\n"
+                f"Zabezpieczenie to {typ_zabezpieczenia} o prądzie {In_bezp}A (wymagany prąd wyłączenia Ia = {Ia}A).\n"
+                f"Długość kabla: {dlugosc}m, materiał: {material}, ułożony równolegle w liczbie N={N} sztuk. Dobrany przekrój pojedynczy: {dobrany_przekroj}mm2 (obciążalność Iz={Iz_ost:.1f}A).\n"
+                f"Wyliczony prąd zwarcia jednofazowego na końcu linii wynosi {Ik1_ost:.1f}A.\n"
+                f"Status SWZ: {'SPEŁNIONY' if swz_spelniony else 'NIE SPEŁNIONY'}.\n\n"
+                f"Napisz zwięzłą opinię ekspercką w 3-4 punktach, używając żargonu elektryków:\n"
+                f"1. Skomentuj wynik SWZ w kontekście wybranego aparatu ({typ_zabezpieczenia}).\n"
+                f"2. Odnieś się do decyzji o ułożeniu linii wielotorowej N={N} oraz doboru przekroju dla sposobu ułożenia {kod_ulozenia}.\n"
                 f"3. Podaj jedną praktyczną wskazówkę wykonawczą dla tych warunków ułożenia ({ulozenie}) i temperatury ({temperatura}°C)."
             )
             response = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
